@@ -1,0 +1,12 @@
+node_modules/
+test-results/
+playwright-report/
+blob-report/
+
+# Configurações locais do editor ficam fora; só as compartilhadas pelo time entram.
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Configurações locais do Claude Code (permissões da máquina de cada pessoa).
+.claude/settings.local.json

@@ -1,0 +1,11 @@
+node_modules/
+playwright-report/
+test-results/
+blob-report/
+package-lock.json
+
+# Evidências geradas pela execução (relatório HTML, log e imagens).
+evidencias/
+
+# Configuração local do Claude Code.
+.claude/

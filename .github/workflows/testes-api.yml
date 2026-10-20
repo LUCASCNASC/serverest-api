@@ -1,0 +1,90 @@
+name: Testes de API
+
+on:
+  # Todo Pull Request e todo push na branch principal.
+  pull_request:
+  push:
+    branches: [main]
+
+  # Todo dia útil às 9h (horário de Brasília = 12h UTC). A base da ServeRest é
+  # apagada toda noite, então esta execução confirma que o fluxo funciona com o
+  # ambiente zerado, mesmo em dias sem nenhuma mudança no código.
+  schedule:
+    - cron: '0 12 * * 1-5'
+
+  # Execução manual pela aba "Actions", escolhendo qual grupo de testes rodar.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Grupo de testes'
+        type: choice
+        options: ['@regressao', '@smoke', '@desafio-tecnico']
+        default: '@regressao'
+
+# Se um novo push chegar na mesma branch, cancela a execução anterior.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Para apontar para outro ambiente, crie a variável BASE_URL em
+  # Settings > Secrets and variables > Actions > Variables.
+  BASE_URL: ${{ vars.BASE_URL || 'https://serverest.dev' }}
+
+jobs:
+  saude-da-api:
+    name: Saúde da API
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Antes de rodar os testes, confirma que a API está no ar e respondendo
+      # nos recursos usados pelo fluxo de compra. Se não estiver, a pipeline
+      # para aqui com uma mensagem clara, em vez de 26 testes falhando.
+      - name: Verificar se a ServeRest responde
+        run: |
+          for recurso in usuarios produtos carrinhos; do
+            url="$BASE_URL/$recurso"
+            echo "Verificando $url"
+            status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              --retry 5 --retry-delay 10 --retry-all-errors --max-time 15 "$url")
+            if [ "$status" != "200" ]; then
+              echo "::error title=API indisponível::$url respondeu $status. Os testes não foram executados."
+              exit 1
+            fi
+            echo "OK ($status)"
+          done
+
+  testes:
+    name: Testes (${{ inputs.tag || '@regressao' }})
+    needs: saude-da-api
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar o Node.js (versão do .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instalar as dependências
+        run: npm ci
+
+      - name: Verificar tipos, lint e formatação
+        run: npm run verificar
+
+      # Testes só de API: não é preciso instalar navegadores do Playwright.
+      - name: Executar os testes com 2 workers
+        run: npx playwright test --grep "${{ inputs.tag || '@regressao' }}" --workers=2
+
+      # Publica o relatório mesmo quando há falha: é justamente quando ele
+      # mais importa (traz o trace de cada requisição do teste que falhou).
+      - name: Publicar o relatório HTML
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-playwright
+          path: playwright-report/
+          retention-days: 14

@@ -1,0 +1,32 @@
+Execução da suíte contra https://serverest.dev
+Data: 2026-10-20 18:40:20
+Comando: npx playwright test
+
+Running 26 tests using 2 workers
+  ok  1 tests\fluxo-de-compra.spec.ts:105:3 › Fluxo de compra › deve criar, consultar e cancelar a compra, devolvendo o estoque @desafio-tecnico @smoke @regressao (5.1s)
+  ok  2 tests\fluxo-de-compra.spec.ts:74:3 › Fluxo de compra › deve criar, consultar e concluir a compra, mantendo o estoque baixado @desafio-tecnico @smoke @regressao (5.7s)
+  ok  4 tests\integridade-do-carrinho.spec.ts:60:3 › Integridade entre clientes › o estoque reservado por um cliente só volta para venda quando ele cancela @regressao (6.0s)
+  ok  3 tests\integridade-do-carrinho.spec.ts:13:3 › Integridade entre clientes › concluir a compra de um cliente não afeta o carrinho de outro @regressao (6.7s)
+  ok  5 tests\integridade-do-carrinho.spec.ts:102:3 › Integridade dos dados vinculados ao carrinho › não deve excluir produto que faz parte de um carrinho @regressao (4.7s)
+  ok  6 tests\integridade-do-carrinho.spec.ts:127:3 › Integridade dos dados vinculados ao carrinho › não deve excluir usuário que tem carrinho @regressao (4.7s)
+  ok  8 tests\regras-do-carrinho.spec.ts:13:3 › Regras do carrinho › não deve permitir mais de um carrinho por usuário @regressao (3.6s)
+  ok  7 tests\integridade-do-carrinho.spec.ts:151:3 › Integridade dos dados vinculados ao carrinho › o carrinho mantém o preço do momento da compra quando o produto muda de preço @regressao (4.1s)
+  ok  9 tests\regras-do-carrinho.spec.ts:33:3 › Regras do carrinho › não deve permitir comprar mais do que o estoque disponível @regressao (2.9s)
+  ok 10 tests\regras-do-carrinho.spec.ts:49:3 › Regras do carrinho › não deve permitir o mesmo produto repetido no carrinho @regressao (3.0s)
+  ok 11 tests\regras-do-carrinho.spec.ts:67:3 › Regras do carrinho › não deve permitir carrinho com produto inexistente @regressao (3.0s)
+  ok 12 tests\regras-do-carrinho.spec.ts:77:3 › Regras do carrinho › não deve criar carrinho sem token de autenticação @regressao (4.4s)
+  ok 13 tests\regras-do-carrinho.spec.ts:87:3 › Regras do carrinho › concluir compra sem carrinho responde 200, mas com mensagem diferente @regressao (2.6s)
+  ok 15 tests\regras-do-carrinho.spec.ts:105:5 › Limites do estoque › não deve aceitar carrinho com quantidade -5 @regressao (3.8s)
+  ok 14 tests\regras-do-carrinho.spec.ts:105:5 › Limites do estoque › não deve aceitar carrinho com quantidade 0 @regressao (5.0s)
+  ok 17 tests\usuarios.spec.ts:22:5 › Usuário administrador: cadastro e login › deve cadastrar o usuário e persistir os dados enviados @regressao (1.1s)
+  ok 18 tests\usuarios.spec.ts:49:5 › Usuário administrador: cadastro e login › deve fazer login e receber um token do próprio usuário @regressao (1.3s)
+  ok 19 tests\usuarios.spec.ts:22:5 › Usuário comum: cadastro e login › deve cadastrar o usuário e persistir os dados enviados @regressao (1.3s)
+  ok 16 tests\regras-do-carrinho.spec.ts:130:3 › Ciclo de vida do carrinho › deve permitir uma nova compra depois de concluir a anterior @regressao (5.2s)
+  ok 20 tests\usuarios.spec.ts:49:5 › Usuário comum: cadastro e login › deve fazer login e receber um token do próprio usuário @regressao (1.5s)
+  ok 21 tests\usuarios.spec.ts:78:3 › Regras de cadastro e login › não deve cadastrar usuário com e-mail já utilizado @regressao (1.8s)
+  ok 22 tests\usuarios.spec.ts:87:3 › Regras de cadastro e login › não deve fazer login com senha errada @regressao (1.8s)
+  ok 23 tests\usuarios.spec.ts:96:3 › Permissões do administrador › deve cadastrar produto e o produto ficar disponível para consulta @regressao (2.5s)
+  ok 24 tests\usuarios.spec.ts:125:3 › Permissões do administrador › não deve cadastrar produto com nome já utilizado @regressao (2.6s)
+  ok 25 tests\usuarios.spec.ts:137:3 › Permissões do usuário comum › não deve permitir que usuário comum cadastre produto @regressao (2.0s)
+  ok 26 tests\usuarios.spec.ts:149:3 › Permissões do usuário comum › deve comprar produtos cadastrados por um administrador @regressao @smoke (4.3s)
+  26 passed (53.9s)

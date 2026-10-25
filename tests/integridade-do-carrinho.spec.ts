@@ -38,6 +38,7 @@ test.describe('Integridade entre clientes', { tag: '@regressao' }, () => {
 
     await test.step('O primeiro cliente conclui a compra', async () => {
       const resposta = await api.carrinhos.concluirCompra(clienteLogado.token);
+      expect(resposta.status()).toBe(200);
       expect(await resposta.json()).toEqual({ message: MENSAGENS.registroExcluido });
     });
 
@@ -87,6 +88,7 @@ test.describe('Integridade entre clientes', { tag: '@regressao' }, () => {
 
     await test.step('O primeiro cliente cancela e o estoque volta', async () => {
       const resposta = await api.carrinhos.cancelarCompra(clienteLogado.token);
+      expect(resposta.status()).toBe(200);
       expect(await resposta.json()).toEqual({ message: MENSAGENS.compraCancelada });
       await conferirEstoque(api, produto, produto.quantidade);
     });
@@ -110,12 +112,12 @@ test.describe('Integridade dos dados vinculados ao carrinho', { tag: '@regressao
       [{ idProduto: produto._id, quantidade: 1 }],
       clienteLogado.token,
     );
+    expect(carrinho.status()).toBe(201);
     const { _id: idCarrinho } = await carrinho.json();
 
     const resposta = await api.produtos.excluir(produto._id, adminComProdutos.token);
 
     expect(resposta.status()).toBe(400);
-    // A API informa quais carrinhos impedem a exclusão.
     expect(await resposta.json()).toEqual({
       message: MENSAGENS.produtoEmCarrinho,
       idCarrinhos: [idCarrinho],
@@ -135,6 +137,7 @@ test.describe('Integridade dos dados vinculados ao carrinho', { tag: '@regressao
       [{ idProduto: produto._id, quantidade: 1 }],
       clienteLogado.token,
     );
+    expect(carrinho.status()).toBe(201);
     const { _id: idCarrinho } = await carrinho.json();
 
     const resposta = await api.usuarios.excluir(clienteLogado.idUsuario);
@@ -187,6 +190,7 @@ test.describe('Integridade dos dados vinculados ao carrinho', { tag: '@regressao
 
     await test.step('O carrinho continua com o preço original', async () => {
       const resposta = await api.carrinhos.buscarPorId(idCarrinho);
+      expect(resposta.status()).toBe(200);
       expect(await resposta.json()).toMatchObject({
         produtos: [{ idProduto: produto._id, quantidade: 2, precoUnitario: produto.preco }],
         precoTotal: produto.preco * 2,

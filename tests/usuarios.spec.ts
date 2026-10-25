@@ -40,8 +40,6 @@ for (const perfil of PERFIS) {
       await test.step('Consultar o usuário pelo ID e conferir o que foi gravado', async () => {
         const resposta = await api.usuarios.buscarPorId(idUsuario);
         expect(resposta.status()).toBe(200);
-        // Corpo inteiro: confirma nome, e-mail, senha e, principalmente,
-        // que o perfil foi gravado como o esperado.
         expect(await resposta.json()).toEqual({ ...usuario, _id: idUsuario });
       });
     });

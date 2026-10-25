@@ -88,9 +88,7 @@ test.describe('Regras do carrinho', { tag: '@regressao' }, () => {
     api,
     adminComProdutos,
   }) => {
-    // Comportamento documentado da API que é armadilha para automação:
-    // o status é o mesmo do sucesso, só a mensagem muda. Este teste deixa
-    // isso registrado e justifica por que o fluxo principal valida a mensagem.
+    // Sem carrinho, a API mantém o status 200; a mensagem identifica o resultado real.
     const resposta = await api.carrinhos.concluirCompra(adminComProdutos.token);
 
     expect(resposta.status()).toBe(200);
@@ -144,6 +142,7 @@ test.describe('Ciclo de vida do carrinho', { tag: '@regressao' }, () => {
       expect(carrinho.status()).toBe(201);
 
       const conclusao = await api.carrinhos.concluirCompra(clienteLogado.token);
+      expect(conclusao.status()).toBe(200);
       expect(await conclusao.json()).toEqual({ message: MENSAGENS.registroExcluido });
     });
 
@@ -156,6 +155,7 @@ test.describe('Ciclo de vida do carrinho', { tag: '@regressao' }, () => {
 
       const { _id: idNovoCarrinho } = await resposta.json();
       const consulta = await api.carrinhos.buscarPorId(idNovoCarrinho);
+      expect(consulta.status()).toBe(200);
       expect(await consulta.json()).toMatchObject({
         idUsuario: clienteLogado.idUsuario,
         produtos: [{ idProduto: produtoB._id, quantidade: 1 }],

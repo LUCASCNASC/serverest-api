@@ -3,7 +3,7 @@
 Automação do fluxo principal de negócio da [ServeRest](https://serverest.dev) com **Playwright + TypeScript**:
 cadastro de usuário → login → cadastro de produtos → carrinho (criar, consultar e encerrar).
 
-**Navegação rápida:** [Stack](#stack) · [Preparando o ambiente](#preparando-o-ambiente) · [Como rodar](#como-rodar) · [Pipeline](#pipeline-github-actions) · [Organização](#organização) · [Cenários automatizados](#cenários-automatizados) · [Análise de qualidade](#análise-de-qualidade) · [Desafio de investigação](#desafio-de-investigação) · [Evidências](#evidências) · [Como contribuir](#como-contribuir)
+**Navegação rápida:** [Stack](#stack) · [Preparando o ambiente](#preparando-o-ambiente) · [Como rodar](#como-rodar) · [Pipeline](#pipeline-github-actions) · [Organização](#organização) · [Cenários automatizados](#cenários-automatizados) · [Análise de qualidade](#análise-de-qualidade) · [Desafio de investigação](#desafio-de-investigação) · [Evidências](#evidências)
 
 ## Stack
 
@@ -206,7 +206,7 @@ Decisões que vale explicar:
 
 - **As asserções ficam nos testes, não nas classes de API.** As classes só devolvem a resposta. Assim, cada teste mostra claramente o que espera.
 - **A passagem de dados entre as chamadas fica à vista.** No `fluxo-de-compra.spec.ts`, o `_id` do usuário, o `token` do login e os `_id` dos produtos são guardados em variáveis e passados como parâmetro para as chamadas seguintes. O relatório do Playwright mostra cada passo numerado (`test.step`).
-- **O corpo da resposta é comparado por inteiro** (`toEqual`) nos pontos críticos. No carrinho, o objeto esperado é calculado a partir do que foi cadastrado: preço unitário, quantidade total e preço total. Com isso, um campo errado, faltando ou sobrando faz o teste falhar.
+- **Status HTTP e corpo são validados em conjunto.** Nos pontos críticos, o corpo é comparado por inteiro (`toEqual`). No carrinho, o objeto esperado é calculado a partir do que foi cadastrado: preço unitário, quantidade total e preço total.
 - **Cada teste cria a própria massa.** Por isso eles rodam em paralelo sem interferir uns nos outros.
 - **As respostas da API são tipadas.** Cada método das classes de API informa o formato do corpo de sucesso (`src/tipos.ts`). Com isso, o editor sugere os campos (`_id`, `authorization`...) e um nome de campo errado é acusado antes de rodar o teste.
 - **O lint protege contra falso positivo.** O erro mais perigoso em testes assíncronos é esquecer um `await`: o teste termina antes de a verificação acontecer e passa sem validar nada. As regras `no-floating-promises` (TypeScript) e `missing-playwright-await` (Playwright) acusam esse erro no editor, no `npm run verificar` e na pipeline, antes de o código chegar à branch principal.
@@ -293,7 +293,12 @@ A base da ServeRest **é apagada toda noite**. Daí vêm três consequências:
 ### Riscos identificados no mapeamento
 
 - **O DELETE devolve 200 nos dois casos.** `concluir-compra` e `cancelar-compra` respondem 200 tanto quando excluem quanto quando _não existe carrinho_. Um teste que olhe só o status passa mesmo sem excluir nada (falso positivo). Por isso valido a mensagem e, depois, confirmo que o carrinho sumiu (`GET /carrinhos/{id}` → 400). Há um teste dedicado a esse comportamento.
-- **O Swagger diverge da API real.** A documentação diz que o cancelamento retorna `"Registro excluído com sucesso"`, mas a API devolve `"Registro excluído com sucesso. Estoque dos produtos reabastecido"`. Também nas exclusões bloqueadas: a API devolve, além da mensagem, o ID do carrinho que impede a exclusão (`idCarrinhos` ou `idCarrinho`), o que não está no exemplo do Swagger. Achei as duas divergências durante a automação. Conclusão: antes de escrever um cenário novo, confirmo o comportamento real da API, e as asserções seguem o que foi observado. A documentação não é tratada como fonte da verdade.
+- **Defeitos identificados no Swagger:** há divergências entre os exemplos documentados e as respostas observadas na API:
+  - `DELETE /carrinhos/cancelar-compra`: o Swagger informa `"Registro excluído com sucesso"`, mas a API retorna `"Registro excluído com sucesso. Estoque dos produtos reabastecido"`.
+  - Exclusões de produto ou usuário bloqueadas por um carrinho: a API inclui o identificador do carrinho na resposta (`idCarrinhos` para produto e `idCarrinho` para usuário), campos ausentes dos exemplos do Swagger.
+
+  São defeitos da documentação, não critérios para alterar o comportamento da API. Os testes registram o status HTTP e o corpo efetivamente observado; os casos de exclusão bloqueada confirmam também que o recurso continua disponível.
+
 - **O reset noturno pode atingir uma execução em andamento.** Um teste rodando perto da virada do dia pode ter os dados apagados no meio e falhar sem bug real. Os testes são curtos (segundos) e criam tudo na hora, o que reduz bastante a janela, mas o risco existe e convém lembrar dele ao analisar uma falha nesse horário.
 - **O ambiente é público e compartilhado.** Durante a automação ele derrubou conexões (`ECONNRESET`) e respondeu `429 Too Many Requests` quando recebeu muitas requisições simultâneas. Para lidar com isso:
   - o paralelismo está limitado a 2 workers;
@@ -406,22 +411,3 @@ PLAYWRIGHT_HTML_OUTPUT_DIR=evidencias/relatorio-html npx playwright test
 # Windows PowerShell
 $env:PLAYWRIGHT_HTML_OUTPUT_DIR="evidencias/relatorio-html"; npx playwright test
 ```
-
-## Como contribuir
-
-Este projeto é mantido por mais de uma pessoa. Para ele continuar fácil de entender:
-
-1. **Crie uma branch** a partir da principal para cada mudança (`git checkout -b teste/nome-do-cenario`).
-2. **Siga os padrões do projeto:**
-   - Nomes de testes, variáveis e funções em **português**, descrevendo o comportamento (`deve...` / `não deve...`).
-   - As classes em `src/api` **só fazem requisições**. As asserções ficam nos testes.
-   - Nunca use IDs ou usuários fixos: a base é apagada toda noite. Gere dados com `src/dados/fabrica.ts`.
-   - Tudo o que o teste criar deve ser registrado na fixture `massa` (`guardarUsuario`, `guardarToken`, `guardarProduto`) para ser apagado no final.
-   - Uma mensagem nova da API vai em `src/dados/mensagens.ts`, não escrita direto no teste.
-   - Precisa de um usuário pronto como pré-condição? Use as fixtures `adminLogado`, `adminComProdutos` ou `clienteLogado`.
-   - Valide o **corpo** da resposta, não só o status code. A ServeRest devolve o mesmo status para situações diferentes.
-   - **Todo teste novo precisa da tag `@regressao`**, normalmente herdada do `test.describe`. Adicione `@smoke` só se o teste for essencial e rápido, e `@desafio-tecnico` só se fizer parte do fluxo pedido no desafio.
-     - As tags aceitas ficam no `eslint.config.js` (regra `playwright/valid-test-tags`). Uma tag digitada errada vira erro de lint em vez de esconder o teste em silêncio. Para criar uma categoria nova, inclua a tag nessa lista e na tabela de tags acima.
-     - Para conferir se algum teste ficou sem `@regressao`, rode `npx playwright test --list --grep-invert @regressao`. O esperado é "No tests found".
-3. **Antes de abrir o Pull Request**, rode `npm run verificar` e `npm test` e confirme que tudo passa. Ao abrir o Pull Request, a pipeline roda as mesmas verificações e a suíte completa; só faça o merge com ela verde.
-4. **Atualize este README** se a mudança alterar a configuração, a organização ou a análise de qualidade (riscos, o que é e o que não é testado).

@@ -16,10 +16,9 @@ import type { Carrinho, ItemDoCarrinho, ProdutoCadastrado } from '../src/tipos';
  *
  * Tags:
  *   @desafio-tecnico → é exatamente o fluxo obrigatório pedido no desafio;
- *   @smoke           → é o caminho essencial do negócio;
  *   @regressao       → como todo teste, faz parte da suíte completa.
  */
-test.describe('Fluxo de compra', { tag: ['@desafio-tecnico', '@smoke', '@regressao'] }, () => {
+test.describe('Fluxo de compra', { tag: ['@desafio-tecnico', '@regressao'] }, () => {
   let idUsuario: string;
   let token: string;
   let produtos: ProdutoCadastrado[];

@@ -5,9 +5,6 @@ export const MENSAGENS = {
   cadastroComSucesso: 'Cadastro realizado com sucesso',
   loginComSucesso: 'Login realizado com sucesso',
   registroExcluido: 'Registro excluído com sucesso',
-  usuarioNaoEncontrado: 'Usuário não encontrado',
-  // O Swagger documenta só "Registro excluído com sucesso" para o cancelamento,
-  // mas a API real devolve o texto completo abaixo.
   compraCancelada: 'Registro excluído com sucesso. Estoque dos produtos reabastecido',
   carrinhoNaoEncontrado: 'Carrinho não encontrado',
   usuarioSemCarrinho: 'Não foi encontrado carrinho para esse usuário',

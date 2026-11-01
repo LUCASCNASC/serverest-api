@@ -176,7 +176,6 @@ test.describe('Fluxo de compra', { tag: ['@desafio-tecnico', '@regressao'] }, ()
     await test.step('4.2 Listar os carrinhos do usuário (GET /carrinhos?idUsuario=)', async () => {
       const resposta = await api.carrinhos.listarDoUsuario(idUsuario);
       expect(resposta.status()).toBe(200);
-      // Exatamente um carrinho: a regra é 1 carrinho por usuário.
       expect(await resposta.json()).toEqual({ quantidade: 1, carrinhos: [carrinhoEsperado] });
     });
   }
@@ -188,6 +187,7 @@ test.describe('Fluxo de compra', { tag: ['@desafio-tecnico', '@regressao'] }, ()
       expect(await porId.json()).toEqual({ message: MENSAGENS.carrinhoNaoEncontrado });
 
       const doUsuario = await api.carrinhos.listarDoUsuario(idUsuario);
+      expect(doUsuario.status()).toBe(200);
       expect(await doUsuario.json()).toEqual({ quantidade: 0, carrinhos: [] });
     });
   }

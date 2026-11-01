@@ -142,46 +142,44 @@ test.describe('Permissões do usuário comum', { tag: '@regressao' }, () => {
     expect(await resposta.json()).toEqual({ message: MENSAGENS.rotaDeAdministrador });
   });
 
-  // @smoke (além do @regressao herdado do describe): é a compra mais próxima do
-  // uso real, um cliente comprando o que o administrador cadastrou.
-  test(
-    'deve comprar produtos cadastrados por um administrador',
-    { tag: '@smoke' },
-    async ({ api, adminComProdutos, clienteLogado }) => {
-      // Integração entre os dois perfis: os IDs dos produtos vêm do admin,
-      // e o carrinho é criado com o token do cliente.
-      const [produto] = adminComProdutos.produtos;
-      let idCarrinho: string;
+  test('deve comprar produtos cadastrados por um administrador', async ({
+    api,
+    adminComProdutos,
+    clienteLogado,
+  }) => {
+    // Integração entre os dois perfis: os IDs dos produtos vêm do admin,
+    // e o carrinho é criado com o token do cliente.
+    const [produto] = adminComProdutos.produtos;
+    let idCarrinho: string;
 
-      await test.step('Cliente cria o carrinho com o próprio token', async () => {
-        const resposta = await api.carrinhos.cadastrar(
-          [{ idProduto: produto._id, quantidade: 2 }],
-          clienteLogado.token,
-        );
-        expect(resposta.status()).toBe(201);
-        idCarrinho = (await resposta.json())._id;
+    await test.step('Cliente cria o carrinho com o próprio token', async () => {
+      const resposta = await api.carrinhos.cadastrar(
+        [{ idProduto: produto._id, quantidade: 2 }],
+        clienteLogado.token,
+      );
+      expect(resposta.status()).toBe(201);
+      idCarrinho = (await resposta.json())._id;
+    });
+
+    await test.step('Carrinho pertence ao cliente, não ao administrador', async () => {
+      const resposta = await api.carrinhos.buscarPorId(idCarrinho);
+      expect(resposta.status()).toBe(200);
+      expect(await resposta.json()).toEqual({
+        _id: idCarrinho,
+        idUsuario: clienteLogado.idUsuario,
+        produtos: [{ idProduto: produto._id, quantidade: 2, precoUnitario: produto.preco }],
+        quantidadeTotal: 2,
+        precoTotal: produto.preco * 2,
       });
+    });
 
-      await test.step('Carrinho pertence ao cliente, não ao administrador', async () => {
-        const resposta = await api.carrinhos.buscarPorId(idCarrinho);
-        expect(resposta.status()).toBe(200);
-        expect(await resposta.json()).toEqual({
-          _id: idCarrinho,
-          idUsuario: clienteLogado.idUsuario,
-          produtos: [{ idProduto: produto._id, quantidade: 2, precoUnitario: produto.preco }],
-          quantidadeTotal: 2,
-          precoTotal: produto.preco * 2,
-        });
-      });
+    await test.step('Cliente conclui a compra', async () => {
+      const resposta = await api.carrinhos.concluirCompra(clienteLogado.token);
+      expect(resposta.status()).toBe(200);
+      expect(await resposta.json()).toEqual({ message: MENSAGENS.registroExcluido });
 
-      await test.step('Cliente conclui a compra', async () => {
-        const resposta = await api.carrinhos.concluirCompra(clienteLogado.token);
-        expect(resposta.status()).toBe(200);
-        expect(await resposta.json()).toEqual({ message: MENSAGENS.registroExcluido });
-
-        const carrinho = await api.carrinhos.buscarPorId(idCarrinho);
-        expect(carrinho.status()).toBe(400);
-      });
-    },
-  );
+      const carrinho = await api.carrinhos.buscarPorId(idCarrinho);
+      expect(carrinho.status()).toBe(400);
+    });
+  });
 });

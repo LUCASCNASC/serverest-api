@@ -62,6 +62,16 @@ export interface UsuarioCadastrado extends Usuario {
   _id: string;
 }
 
+export interface ListaDeUsuarios {
+  quantidade: number;
+  usuarios: UsuarioCadastrado[];
+}
+
+export interface ListaDeProdutos {
+  quantidade: number;
+  produtos: ProdutoCadastrado[];
+}
+
 export interface ListaDeCarrinhos {
   quantidade: number;
   carrinhos: Carrinho[];

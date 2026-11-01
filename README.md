@@ -77,8 +77,8 @@ Cada teste tem uma ou mais categorias:
 
 | Tag                | O que é                                                                      | Testes                                                                                              |
 | ------------------ | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `@regressao`       | A suíte completa. **Todo teste tem esta tag.**                               | Todos (26)                                                                                          |
-| `@smoke`           | Responde rápido à pergunta "o essencial do negócio está funcionando?"        | Fluxo de compra (concluir e cancelar) e cliente comum comprando produtos cadastrados pelo admin (3) |
+| `@regressao`       | A suíte completa. **Todo teste tem esta tag.**                               | Todos (31)                                                                                          |
+| `@smoke`           | Responde rápido à pergunta "o essencial do negócio está funcionando?"        | Smoke tests centralizados por recurso em `tests/smoke/` (5)                                        |
 | `@desafio-tecnico` | O fluxo obrigatório pedido no desafio: usuário → login → produtos → carrinho | Fluxo de compra: concluir e cancelar (2)                                                            |
 
 ```bash
@@ -184,10 +184,15 @@ src/
   verificacoes.ts       → verificações reaproveitadas (conferir estoque, ler o conteúdo do token)
   tipos.ts              → formatos dos dados enviados e das respostas da API
 tests/
-  fluxo-de-compra.spec.ts         → o fluxo obrigatório do desafio, passo a passo (tags @desafio-tecnico e @smoke)
+  fluxo-de-compra.spec.ts         → o fluxo obrigatório do desafio, passo a passo (tags @desafio-tecnico e @regressao)
   regras-do-carrinho.spec.ts      → regras do carrinho, limites do estoque e ciclo de vida (comprar de novo)
   integridade-do-carrinho.spec.ts → isolamento entre clientes e proteção dos dados ligados ao carrinho
   usuarios.spec.ts                → os dois perfis (administrador e comum): cadastro, login e permissões
+  smoke/
+    login.spec.ts                 → autenticação e token
+    users.spec.ts                 → listagem, cadastro, consulta, atualização e exclusão
+    products.spec.ts              → listagem, cadastro, consulta, atualização e exclusão
+    carts.spec.ts                 → listagem, cadastro, consulta, cancelamento e conclusão
 
 .github/workflows/testes-api.yml  → pipeline: saúde da API e testes (GitHub Actions)
 .vscode/                          → extensões e configurações do editor compartilhadas pelo time
@@ -214,14 +219,23 @@ Decisões que vale explicar:
 
 ## Cenários automatizados
 
-São 26 testes. Todos têm a tag `@regressao`. As outras tags aparecem na coluna ao lado.
+São 31 testes. Todos têm a tag `@regressao`. As outras tags aparecem na coluna ao lado.
+
+**Smoke tests por recurso** (`tests/smoke/`)
+
+| Arquivo | Operações cobertas |
+| --- | --- |
+| `login.spec.ts` | Login válido e emissão de token para o usuário autenticado |
+| `users.spec.ts` | Listar, cadastrar, consultar, atualizar e excluir usuário |
+| `products.spec.ts` | Listar, cadastrar, consultar, atualizar e excluir produto |
+| `carts.spec.ts` | Listar, cadastrar, consultar, cancelar e concluir compra, incluindo os efeitos no estoque |
 
 **Fluxo de compra**, o fluxo obrigatório do desafio (`fluxo-de-compra.spec.ts`)
 
 | Cenário                                                                                                                  | Tags extras                 |
 | ------------------------------------------------------------------------------------------------------------------------ | --------------------------- |
-| Cadastrar usuário, fazer login, cadastrar produtos, criar, consultar e **concluir** a compra, mantendo o estoque baixado | `@desafio-tecnico` `@smoke` |
-| Cadastrar usuário, fazer login, cadastrar produtos, criar, consultar e **cancelar** a compra, devolvendo o estoque       | `@desafio-tecnico` `@smoke` |
+| Cadastrar usuário, fazer login, cadastrar produtos, criar, consultar e **concluir** a compra, mantendo o estoque baixado | `@desafio-tecnico` |
+| Cadastrar usuário, fazer login, cadastrar produtos, criar, consultar e **cancelar** a compra, devolvendo o estoque       | `@desafio-tecnico` |
 
 **Regras do carrinho** (`regras-do-carrinho.spec.ts`)
 
@@ -260,7 +274,7 @@ São 26 testes. Todos têm a tag `@regressao`. As outras tags aparecem na coluna
 | Administrador cadastra produto, e o produto fica disponível para consulta |             |
 | Não cadastra produto com nome já utilizado                                |             |
 | Usuário comum não pode cadastrar produto (403)                            |             |
-| Usuário comum compra produtos cadastrados por um administrador            | `@smoke`    |
+| Usuário comum compra produtos cadastrados por um administrador            |             |
 
 ## Análise de qualidade
 
@@ -316,7 +330,7 @@ O critério foi priorizar o que, se quebrar, causa prejuízo ao negócio ou ao c
 - **As regras e os limites que protegem o estoque e o dinheiro:** um carrinho por usuário, estoque insuficiente, quantidade zero ou negativa, produto e usuário que não podem ser excluídos, preço congelado no carrinho.
 - **A interação entre dois clientes e entre os dois perfis**, porque é onde aparecem os erros de "dado de uma pessoa afetando outra".
 
-A lista completa dos 26 testes está em [Cenários automatizados](#cenários-automatizados).
+A lista completa dos 31 testes está em [Cenários automatizados](#cenários-automatizados).
 
 ### O que decidi não testar (e por quê)
 

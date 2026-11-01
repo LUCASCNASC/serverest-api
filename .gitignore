@@ -10,3 +10,4 @@ blob-report/
 
 # Configurações locais do Claude Code (permissões da máquina de cada pessoa).
 .claude/settings.local.json
+serverest.json

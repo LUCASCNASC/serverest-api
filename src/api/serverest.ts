@@ -3,6 +3,8 @@ import type {
   Carrinho,
   ItemDoCarrinho,
   ListaDeCarrinhos,
+  ListaDeProdutos,
+  ListaDeUsuarios,
   Produto,
   ProdutoCadastrado,
   RespostaComMensagem,
@@ -40,12 +42,22 @@ function cabecalhoDeAutorizacao(token?: string): Record<string, string> {
 class UsuariosApi {
   constructor(private readonly request: APIRequestContext) {}
 
+  listar() {
+    return tipada<ListaDeUsuarios>(this.request.get('/usuarios'));
+  }
+
   cadastrar(usuario: Usuario) {
     return tipada<RespostaDeCadastro>(this.request.post('/usuarios', { data: usuario }));
   }
 
   buscarPorId(idUsuario: string) {
     return tipada<UsuarioCadastrado>(this.request.get(`/usuarios/${idUsuario}`));
+  }
+
+  editar(idUsuario: string, usuario: Usuario) {
+    return tipada<RespostaComMensagem>(
+      this.request.put(`/usuarios/${idUsuario}`, { data: usuario }),
+    );
   }
 
   excluir(idUsuario: string) {
@@ -63,6 +75,10 @@ class LoginApi {
 
 class ProdutosApi {
   constructor(private readonly request: APIRequestContext) {}
+
+  listar() {
+    return tipada<ListaDeProdutos>(this.request.get('/produtos'));
+  }
 
   cadastrar(produto: Produto, token: string) {
     return tipada<RespostaDeCadastro>(

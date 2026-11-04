@@ -7,6 +7,7 @@ export const MENSAGENS = {
   registroExcluido: 'Registro excluído com sucesso',
   compraCancelada: 'Registro excluído com sucesso. Estoque dos produtos reabastecido',
   carrinhoNaoEncontrado: 'Carrinho não encontrado',
+  usuarioNaoEncontrado: 'Usuário não encontrado',
   usuarioSemCarrinho: 'Não foi encontrado carrinho para esse usuário',
   maisDeUmCarrinho: 'Não é permitido ter mais de 1 carrinho',
   produtoDuplicado: 'Não é permitido possuir produto duplicado',

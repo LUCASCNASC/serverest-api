@@ -2,7 +2,7 @@ import { test, expect } from '../../src/fixtures';
 import { novoUsuarioComum } from '../../src/dados/fabrica';
 import { MENSAGENS } from '../../src/dados/mensagens';
 
-test.describe('Smoke: usuários', { tag: ['@smoke', '@regressao'] }, () => {
+test.describe('Smoke: usuários', { tag: ['@smoke', '@regression'] }, () => {
   test('lista, cadastra, consulta, atualiza e exclui um usuário', async ({ api, massa }) => {
     const lista = await api.usuarios.listar();
     expect(lista.status()).toBe(200);

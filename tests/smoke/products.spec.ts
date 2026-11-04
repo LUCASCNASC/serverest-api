@@ -2,7 +2,7 @@ import { test, expect } from '../../src/fixtures';
 import { novoProduto } from '../../src/dados/fabrica';
 import { MENSAGENS } from '../../src/dados/mensagens';
 
-test.describe('Smoke: produtos', { tag: ['@smoke', '@regressao'] }, () => {
+test.describe('Smoke: produtos', { tag: ['@smoke', '@regression'] }, () => {
   test('lista, cadastra, consulta, atualiza e exclui um produto', async ({
     api,
     massa,

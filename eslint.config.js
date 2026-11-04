@@ -38,11 +38,13 @@ export default defineConfig(
     files: ['tests/**/*.ts'],
     extends: [playwright.configs['flat/recommended']],
     rules: {
-      // Só estas tags são aceitas. Uma tag digitada errada (ex.: "@regresao")
+      // Só estas tags são aceitas. Uma tag digitada errada
       // não daria erro nenhum: o teste sumiria em silêncio da execução filtrada.
       'playwright/valid-test-tags': [
         'error',
-        { allowedTags: ['@regressao', '@smoke', '@desafio-tecnico'] },
+        {
+          allowedTags: ['@regression', '@critical', '@smoke', '@desafio-tecnico'],
+        },
       ],
     },
   },

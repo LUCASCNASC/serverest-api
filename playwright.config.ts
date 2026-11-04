@@ -23,7 +23,7 @@ export default defineConfig({
   // Na pipeline (GitHub Actions), o reporter "github" também marca as falhas
   // direto na tela do Pull Request, na linha do teste que quebrou.
   reporter: process.env.CI
-    ? [['github'], ['list'], ['html', { open: 'never' }]]
+    ? [['github'], ['list'], ['blob']]
     : [['list'], ['html', { open: 'never' }]],
 
   use: {

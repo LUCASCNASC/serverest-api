@@ -2,7 +2,7 @@ import { test, expect } from '../../src/fixtures';
 import { MENSAGENS } from '../../src/dados/mensagens';
 import { lerConteudoDoJwt } from '../../src/verificacoes';
 
-test.describe('Smoke: login', { tag: ['@smoke', '@regressao'] }, () => {
+test.describe('Smoke: login', { tag: ['@smoke', '@regression'] }, () => {
   test('POST /login autentica um usuário cadastrado', async ({ api, clienteLogado }) => {
     const resposta = await api.login.entrar(
       clienteLogado.dados.email,

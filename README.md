@@ -75,19 +75,21 @@ As configurações compartilhadas do editor (`.vscode/settings.json`) já ativam
 
 Cada teste tem uma ou mais categorias:
 
-| Tag                | O que é                                                                      | Testes                                                                                              |
-| ------------------ | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `@regressao`       | A suíte completa. **Todo teste tem esta tag.**                               | Todos (31)                                                                                          |
-| `@smoke`           | Responde rápido à pergunta "o essencial do negócio está funcionando?"        | Smoke tests centralizados por recurso em `tests/smoke/` (5)                                        |
-| `@desafio-tecnico` | O fluxo obrigatório pedido no desafio: usuário → login → produtos → carrinho | Fluxo de compra: concluir e cancelar (2)                                                            |
+| Tag                | O que é                                                                      | Testes                                                      |
+| ------------------ | ---------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `@regression`      | A suíte completa. **Todo teste tem esta tag.**                               | Todos (31)                                                  |
+| `@critical`        | Caminhos de maior risco, repetidos na investigação semanal de flakiness      | Fluxo de compra e ciclo de vida do carrinho (4)             |
+| `@smoke`           | Responde rápido à pergunta "o essencial do negócio está funcionando?"        | Smoke tests centralizados por recurso em `tests/smoke/` (5) |
+| `@desafio-tecnico` | O fluxo obrigatório pedido no desafio: usuário → login → produtos → carrinho | Fluxo de compra: concluir e cancelar (2)                    |
 
 ```bash
-npm run test:regressao    # todos os testes com @regressao
+npm run test:regression   # todos os testes com @regression
+npm run test:critical     # cenários @critical
 npm run test:smoke        # só @smoke (cerca de 15 segundos)
 npm run test:desafio      # só @desafio-tecnico
 ```
 
-Para combinar tags, use expressões do Playwright. Por exemplo, testes de regressão que não são smoke: `npx playwright test --grep @regressao --grep-invert @smoke`.
+O script antigo `test:regressao` continua disponível como alias de `test:regression`. Para combinar tags, use expressões do Playwright. Por exemplo, testes de regressão que não são smoke: `npx playwright test --grep @regression --grep-invert @smoke`.
 
 **Outras formas**
 
@@ -148,28 +150,39 @@ A ServeRest local é útil quando o ambiente público estiver fora do ar, lento 
 
 ## Pipeline (GitHub Actions)
 
-A pipeline fica em [`.github/workflows/testes-api.yml`](.github/workflows/testes-api.yml) e roda em dois jobs, um depois do outro:
+A pipeline fica em [`.github/workflows/testes-api.yml`](.github/workflows/testes-api.yml). A composição separa validações rápidas, regressão, execução repetida dos cenários críticos e publicação dos resultados:
 
 ```
-Saúde da API  ──►  Testes
+Saúde da API ──► Smoke (PR) ──► Regressão em 2 shards
+Lint e tipos ─────────────────► Relatório consolidado
+Agendada: regressão completa ou flaky hunt
 ```
 
-| Job              | O que faz                                                                                                                                                                                                                                                                                                                                                              |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Saúde da API** | Confirma que a ServeRest responde (status 200) nos três recursos usados pelo fluxo: `/usuarios`, `/produtos` e `/carrinhos`. Tenta até 5 vezes antes de desistir. Se a API estiver fora do ar, a pipeline para aqui com o alerta **"API indisponível"**, e os testes nem rodam. Assim, uma queda do ambiente não aparece como 26 testes falhando, o que pareceria bug. |
-| **Testes**       | Instala as dependências com `npm ci`, roda `npm run verificar` (tipos, lint e formatação) e executa a suíte com **2 workers**. O relatório HTML é publicado como artefato (`relatorio-playwright`) mesmo quando há falha, e as falhas aparecem marcadas direto no Pull Request.                                                                                        |
+| Job                            | Gatilho                        | O que faz                                                                                                                                                                |
+| ------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Saúde da API**               | Todos                          | Verifica `/usuarios`, `/produtos` e `/carrinhos` antes dos testes e tenta novamente em caso de falha.                                                                    |
+| **Lint e tipos**               | Todos                          | Executa `npm run verificar` e bloqueia a validação quando tipos, lint ou formatação falham.                                                                              |
+| **Smoke**                      | Pull Request e execução manual | Executa `@smoke` com 1 worker antes da regressão, limitando chamadas simultâneas à API pública.                                                                          |
+| **Regressão**                  | Pull Request e push em `main`  | Executa `@critical` + `@regression` em 2 shards, cada um com 1 worker. Como todos os testes pertencem a `@regression`, a suíte completa é coberta.                       |
+| **Regressão completa noturna** | Segunda a sexta                | Executa toda a suíte. Não há matriz de navegadores porque o projeto testa somente API HTTP.                                                                              |
+| **Investigação de flakiness**  | Domingo e execução manual      | Repete os cenários `@critical` 10 vezes, em sequência e sem retry, para tornar falhas intermitentes visíveis.                                                            |
+| **Consolidar resultados**      | Após os jobs                   | Mescla os relatórios Playwright, publica o HTML por 14 dias, escreve um resumo e atualiza um comentário no PR quando o token tem permissão (PRs do próprio repositório). |
 
 **Quando roda:**
 
-| Gatilho                                                             | Testes executados                                                                                                                         |
-| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Todo Pull Request e todo push na branch `main`                      | `@regressao`                                                                                                                              |
-| Agendada, de segunda a sexta às 9h (Brasília)                       | `@regressao`. Como a base é apagada toda noite, confirma que o fluxo funciona com o ambiente zerado, mesmo em dias sem mudança no código. |
-| Manual, pela aba **Actions** → **Testes de API** → **Run workflow** | Você escolhe: `@regressao`, `@smoke` ou `@desafio-tecnico`                                                                                |
+| Gatilho                                                             | Execuções                                                                                    |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Pull Request                                                        | Lint/tipos, smoke e regressão em shards (smoke termina antes dos shards para reduzir carga). |
+| Push em `main`                                                      | Lint/tipos e regressão em shards.                                                            |
+| Segunda a sexta, às 9h (Brasília)                                   | Regressão completa noturna.                                                                  |
+| Domingo, às 10h (Brasília)                                          | `@critical` repetidos 10 vezes para investigar flakiness.                                    |
+| Manual, pela aba **Actions** → **Testes de API** → **Run workflow** | Escolha `regression`, `smoke`, `desafio-tecnico` ou `flaky-hunt`.                            |
 
-**Por que 2 workers:** é o equilíbrio entre velocidade (cerca de 1 minuto para a suíte completa) e respeito ao ambiente público, que responde `429 Too Many Requests` quando recebe muitas requisições ao mesmo tempo.
+**Por que 2 shards com 1 worker:** dividem a regressão sem aumentar a concorrência total de testes em relação aos 2 workers anteriores. Os shards só iniciam depois do smoke no PR; não há execução paralela de smoke e regressão contra o serviço público.
 
-**Onde ver o relatório:** na execução, em **Summary** → **Artifacts** → `relatorio-playwright`. Baixe, descompacte e abra o `index.html`.
+**Onde ver o relatório:** na execução, em **Summary** → **Artifacts** → `relatorio-playwright`. Baixe, descompacte e abra o `index.html`. Os traces são mantidos apenas nos relatórios dos testes que falharam; os artefatos HTML expiram em 14 dias.
+
+**Bloqueio de merge:** para tornar a validação obrigatória, configure nas regras da branch `main` os checks `Saúde da API`, `Lint e tipos`, `Smoke tests` e os dois checks `Regressão (shard ...)`. Não marque `Consolidar resultados` como obrigatório: ele existe para publicar o diagnóstico mesmo quando algum job falha.
 
 **Outro ambiente:** para rodar a pipeline contra outro endereço, crie a variável `BASE_URL` em **Settings** → **Secrets and variables** → **Actions** → **Variables**. Sem ela, a pipeline usa `https://serverest.dev`.
 
@@ -184,7 +197,7 @@ src/
   verificacoes.ts       → verificações reaproveitadas (conferir estoque, ler o conteúdo do token)
   tipos.ts              → formatos dos dados enviados e das respostas da API
 tests/
-  fluxo-de-compra.spec.ts         → o fluxo obrigatório do desafio, passo a passo (tags @desafio-tecnico e @regressao)
+  fluxo-de-compra.spec.ts         → fluxo do desafio e cenários críticos (@desafio-tecnico, @regression e @critical)
   regras-do-carrinho.spec.ts      → regras do carrinho, limites do estoque e ciclo de vida (comprar de novo)
   integridade-do-carrinho.spec.ts → isolamento entre clientes e proteção dos dados ligados ao carrinho
   usuarios.spec.ts                → os dois perfis (administrador e comum): cadastro, login e permissões
@@ -219,21 +232,21 @@ Decisões que vale explicar:
 
 ## Cenários automatizados
 
-São 31 testes. Todos têm a tag `@regressao`. As outras tags aparecem na coluna ao lado.
+São 31 testes. Todos têm a tag `@regression`. A tag `@critical` seleciona um subconjunto para repetição semanal; as outras tags aparecem na coluna ao lado.
 
 **Smoke tests por recurso** (`tests/smoke/`)
 
-| Arquivo | Operações cobertas |
-| --- | --- |
-| `login.spec.ts` | Login válido e emissão de token para o usuário autenticado |
-| `users.spec.ts` | Listar, cadastrar, consultar, atualizar e excluir usuário |
-| `products.spec.ts` | Listar, cadastrar, consultar, atualizar e excluir produto |
-| `carts.spec.ts` | Listar, cadastrar, consultar, cancelar e concluir compra, incluindo os efeitos no estoque |
+| Arquivo            | Operações cobertas                                                                        |
+| ------------------ | ----------------------------------------------------------------------------------------- |
+| `login.spec.ts`    | Login válido e emissão de token para o usuário autenticado                                |
+| `users.spec.ts`    | Listar, cadastrar, consultar, atualizar e excluir usuário                                 |
+| `products.spec.ts` | Listar, cadastrar, consultar, atualizar e excluir produto                                 |
+| `carts.spec.ts`    | Listar, cadastrar, consultar, cancelar e concluir compra, incluindo os efeitos no estoque |
 
 **Fluxo de compra**, o fluxo obrigatório do desafio (`fluxo-de-compra.spec.ts`)
 
-| Cenário                                                                                                                  | Tags extras                 |
-| ------------------------------------------------------------------------------------------------------------------------ | --------------------------- |
+| Cenário                                                                                                                  | Tags extras        |
+| ------------------------------------------------------------------------------------------------------------------------ | ------------------ |
 | Cadastrar usuário, fazer login, cadastrar produtos, criar, consultar e **concluir** a compra, mantendo o estoque baixado | `@desafio-tecnico` |
 | Cadastrar usuário, fazer login, cadastrar produtos, criar, consultar e **cancelar** a compra, devolvendo o estoque       | `@desafio-tecnico` |
 
@@ -395,7 +408,7 @@ Depois de achar a causa, eu garantiria que o problema não volta:
 
 ## Evidências
 
-A pasta [`evidencias/`](evidencias/) tem o resultado de uma execução completa da suíte contra `https://serverest.dev`: **26 testes, 26 passando, 0 flaky**.
+A pasta [`evidencias/`](evidencias/) contém evidências arquivadas de uma execução anterior contra `https://serverest.dev` (**26 testes, 26 passando, 0 flaky**). A suíte atual tem 31 testes; o relatório atualizado é publicado como artefato pela pipeline.
 
 | Arquivo                                                                         | O que é                                                                                                    |
 | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -412,7 +425,7 @@ A pasta [`evidencias/`](evidencias/) tem o resultado de uma execução completa 
 
 **A suíte completa:**
 
-![Visão geral do relatório com os 26 testes passando](evidencias/01-visao-geral.png)
+![Visão geral do relatório arquivado com 26 testes passando](evidencias/01-visao-geral.png)
 
 Para gerar um novo relatório de evidências na mesma pasta:
 

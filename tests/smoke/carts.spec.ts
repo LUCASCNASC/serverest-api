@@ -2,7 +2,7 @@ import { test, expect } from '../../src/fixtures';
 import { MENSAGENS } from '../../src/dados/mensagens';
 import { conferirEstoque } from '../../src/verificacoes';
 
-test.describe('Smoke: carrinhos', { tag: ['@smoke', '@regressao'] }, () => {
+test.describe('Smoke: carrinhos', { tag: ['@smoke', '@regression', '@critical'] }, () => {
   test('lista, cria, consulta e cancela um carrinho, repondo o estoque', async ({
     api,
     adminComProdutos,

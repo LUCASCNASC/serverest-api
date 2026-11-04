@@ -1,45 +1,37 @@
 name: Testes de API
 
 on:
-  # Todo Pull Request e todo push na branch principal.
   pull_request:
   push:
     branches: [main]
-
-  # Todo dia útil às 9h (horário de Brasília = 12h UTC). A base da ServeRest é
-  # apagada toda noite, então esta execução confirma que o fluxo funciona com o
-  # ambiente zerado, mesmo em dias sem nenhuma mudança no código.
   schedule:
     - cron: '0 12 * * 1-5'
-
-  # Execução manual pela aba "Actions", escolhendo qual grupo de testes rodar.
+    - cron: '0 13 * * 0'
   workflow_dispatch:
     inputs:
-      tag:
+      suite:
         description: 'Grupo de testes'
         type: choice
-        options: ['@regressao', '@smoke', '@desafio-tecnico']
-        default: '@regressao'
+        required: true
+        options: [regression, smoke, desafio-tecnico, flaky-hunt]
+        default: regression
 
-# Se um novo push chegar na mesma branch, cancela a execução anterior.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 env:
-  # Para apontar para outro ambiente, crie a variável BASE_URL em
-  # Settings > Secrets and variables > Actions > Variables.
   BASE_URL: ${{ vars.BASE_URL || 'https://serverest.dev' }}
 
 jobs:
-  saude-da-api:
+  api-health:
     name: Saúde da API
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # Antes de rodar os testes, confirma que a API está no ar e respondendo
-      # nos recursos usados pelo fluxo de compra. Se não estiver, a pipeline
-      # para aqui com uma mensagem clara, em vez de 26 testes falhando.
       - name: Verificar se a ServeRest responde
         run: |
           for recurso in usuarios produtos carrinhos; do
@@ -54,11 +46,10 @@ jobs:
             echo "OK ($status)"
           done
 
-  testes:
-    name: Testes (${{ inputs.tag || '@regressao' }})
-    needs: saude-da-api
+  lint:
+    name: Lint e tipos
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     steps:
       - name: Baixar o código
         uses: actions/checkout@v4
@@ -75,16 +66,271 @@ jobs:
       - name: Verificar tipos, lint e formatação
         run: npm run verificar
 
-      # Testes só de API: não é preciso instalar navegadores do Playwright.
-      - name: Executar os testes com 2 workers
-        run: npx playwright test --grep "${{ inputs.tag || '@regressao' }}" --workers=2
+  smoke:
+    name: Smoke tests
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.suite == 'smoke')
+    needs: api-health
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
 
-      # Publica o relatório mesmo quando há falha: é justamente quando ele
-      # mais importa (traz o trace de cada requisição do teste que falhou).
-      - name: Publicar o relatório HTML
+      - name: Instalar o Node.js (versão do .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instalar as dependências
+        run: npm ci
+
+      - name: Executar smoke tests
+        run: npx playwright test --grep @smoke --workers=1
+
+      - name: Publicar relatório para consolidação
         if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-smoke
+          path: blob-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  e2e:
+    name: Regressão (shard ${{ matrix.shard }}/2)
+    if: >-
+      ${{
+        !cancelled() &&
+        needs.api-health.result == 'success' &&
+        (needs.smoke.result == 'success' || needs.smoke.result == 'skipped') &&
+        (
+          github.event_name == 'pull_request' ||
+          github.event_name == 'push' ||
+          (github.event_name == 'workflow_dispatch' && (inputs.suite == 'regression' || inputs.suite == 'desafio-tecnico'))
+        )
+      }}
+    needs: [api-health, smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar o Node.js (versão do .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instalar as dependências
+        run: npm ci
+
+      - name: Executar os testes do shard
+        shell: bash
+        run: |
+          if [ "${{ inputs.suite }}" = "desafio-tecnico" ]; then
+            grep_tag="@desafio-tecnico"
+          else
+            grep_tag="@critical|@regression"
+          fi
+          npx playwright test --grep "$grep_tag" --shard=${{ matrix.shard }}/2 --workers=1
+
+      - name: Publicar relatório para consolidação
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-e2e-${{ matrix.shard }}
+          path: blob-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  nightly-full:
+    name: Regressão completa noturna
+    if: github.event_name == 'schedule' && github.event.schedule == '0 12 * * 1-5'
+    needs: api-health
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar o Node.js (versão do .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instalar as dependências
+        run: npm ci
+
+      - name: Executar a regressão completa
+        run: npx playwright test --grep @regression --workers=2
+
+      - name: Publicar relatório para consolidação
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-nightly-full
+          path: blob-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  flaky-hunt:
+    name: Investigação de flakiness
+    if: >-
+      ${{
+        (github.event_name == 'schedule' && github.event.schedule == '0 13 * * 0') ||
+        (github.event_name == 'workflow_dispatch' && inputs.suite == 'flaky-hunt')
+      }}
+    needs: api-health
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar o Node.js (versão do .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instalar as dependências
+        run: npm ci
+
+      - name: Repetir os cenários críticos 10 vezes
+        run: npx playwright test --grep @critical --repeat-each=10 --workers=1 --retries=0
+
+      - name: Publicar relatório para consolidação
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-flaky-hunt
+          path: blob-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  report:
+    name: Consolidar resultados
+    if: ${{ !cancelled() }}
+    needs: [api-health, lint, smoke, e2e, nightly-full, flaky-hunt]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    steps:
+      - name: Baixar relatórios dos testes
+        uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-*
+          path: all-blob-reports
+          merge-multiple: true
+
+      - name: Baixar o código
+        if: ${{ hashFiles('all-blob-reports/*.zip') != '' }}
+        uses: actions/checkout@v4
+
+      - name: Instalar o Node.js (versão do .nvmrc)
+        if: ${{ hashFiles('all-blob-reports/*.zip') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instalar as dependências
+        if: ${{ hashFiles('all-blob-reports/*.zip') != '' }}
+        run: npm ci
+
+      - name: Gerar relatório HTML consolidado
+        if: ${{ hashFiles('all-blob-reports/*.zip') != '' }}
+        run: npx playwright merge-reports --reporter=html all-blob-reports
+
+      - name: Publicar relatório HTML
+        if: ${{ hashFiles('playwright-report/index.html') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: relatorio-playwright
           path: playwright-report/
+          if-no-files-found: ignore
           retention-days: 14
+
+      - name: Resumir execução
+        if: ${{ !cancelled() }}
+        env:
+          API_HEALTH_RESULT: ${{ needs.api-health.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          SMOKE_RESULT: ${{ needs.smoke.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+          NIGHTLY_RESULT: ${{ needs.nightly-full.result }}
+          FLAKY_RESULT: ${{ needs.flaky-hunt.result }}
+        run: |
+          {
+            echo "## Resultados da automação ServeRest"
+            echo
+            echo "| Job | Resultado |"
+            echo "| --- | --- |"
+            echo "| Saúde da API | $API_HEALTH_RESULT |"
+            echo "| Lint e tipos | $LINT_RESULT |"
+            echo "| Smoke | $SMOKE_RESULT |"
+            echo "| Regressão em shards | $E2E_RESULT |"
+            echo "| Regressão noturna | $NIGHTLY_RESULT |"
+            echo "| Flaky hunt | $FLAKY_RESULT |"
+            echo
+            echo "Execução: [${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comentar resultado no Pull Request
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: actions/github-script@v7
+        env:
+          API_HEALTH_RESULT: ${{ needs.api-health.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          SMOKE_RESULT: ${{ needs.smoke.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const marker = '<!-- serverest-api-ci -->';
+            const body = [
+              marker,
+              '## Resultados da automação ServeRest',
+              '',
+              '| Job | Resultado |',
+              '| --- | --- |',
+              `| Saúde da API | ${process.env.API_HEALTH_RESULT} |`,
+              `| Lint e tipos | ${process.env.LINT_RESULT} |`,
+              `| Smoke | ${process.env.SMOKE_RESULT} |`,
+              `| Regressão em shards | ${process.env.E2E_RESULT} |`,
+              '',
+              `[Ver execução e relatório HTML](${process.env.RUN_URL})`,
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const previous = comments.find(
+              (comment) => comment.user?.type === 'Bot' && comment.body?.includes(marker),
+            );
+
+            if (previous) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: previous.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }

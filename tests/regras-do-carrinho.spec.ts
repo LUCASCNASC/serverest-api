@@ -9,7 +9,7 @@ import { conferirEstoque } from '../src/verificacoes';
  * A fixture `adminComProdutos` já entrega um administrador logado (token) com 2 produtos
  * cadastrados (10 unidades cada), criados na hora para este teste.
  */
-test.describe('Regras do carrinho', { tag: '@regressao' }, () => {
+test.describe('Regras do carrinho', { tag: '@regression' }, () => {
   test('não deve permitir mais de um carrinho por usuário', async ({ api, adminComProdutos }) => {
     const [produtoA, produtoB] = adminComProdutos.produtos;
 
@@ -96,7 +96,7 @@ test.describe('Regras do carrinho', { tag: '@regressao' }, () => {
   });
 });
 
-test.describe('Limites do estoque', { tag: '@regressao' }, () => {
+test.describe('Limites do estoque', { tag: '@regression' }, () => {
   // Quantidade zero ou negativa é o caso mais perigoso: se fosse aceita, criar o
   // carrinho "devolveria" unidades e o estoque AUMENTARIA sem nenhuma compra real.
   for (const quantidade of [0, -5]) {
@@ -124,7 +124,7 @@ test.describe('Limites do estoque', { tag: '@regressao' }, () => {
   // primeiro passo do teste de disputa de estoque, em integridade-do-carrinho.
 });
 
-test.describe('Ciclo de vida do carrinho', { tag: '@regressao' }, () => {
+test.describe('Ciclo de vida do carrinho', { tag: '@regression' }, () => {
   test('deve permitir uma nova compra depois de concluir a anterior', async ({
     api,
     adminComProdutos,

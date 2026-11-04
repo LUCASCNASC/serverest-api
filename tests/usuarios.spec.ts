@@ -18,7 +18,7 @@ const PERFIS = [
 ];
 
 for (const perfil of PERFIS) {
-  test.describe(`Usuário ${perfil.nome}: cadastro e login`, { tag: '@regressao' }, () => {
+  test.describe(`Usuário ${perfil.nome}: cadastro e login`, { tag: '@regression' }, () => {
     test('deve cadastrar o usuário e persistir os dados enviados', async ({ api, massa }) => {
       const usuario = perfil.novoUsuario();
       let idUsuario: string;
@@ -72,7 +72,7 @@ for (const perfil of PERFIS) {
   });
 }
 
-test.describe('Regras de cadastro e login', { tag: '@regressao' }, () => {
+test.describe('Regras de cadastro e login', { tag: '@regression' }, () => {
   test('não deve cadastrar usuário com e-mail já utilizado', async ({ api, clienteLogado }) => {
     const outroUsuarioMesmoEmail = { ...novoUsuarioComum(), email: clienteLogado.dados.email };
 
@@ -90,7 +90,7 @@ test.describe('Regras de cadastro e login', { tag: '@regressao' }, () => {
   });
 });
 
-test.describe('Permissões do administrador', { tag: '@regressao' }, () => {
+test.describe('Permissões do administrador', { tag: '@regression' }, () => {
   test('deve cadastrar produto e o produto ficar disponível para consulta', async ({
     api,
     massa,
@@ -131,7 +131,7 @@ test.describe('Permissões do administrador', { tag: '@regressao' }, () => {
   });
 });
 
-test.describe('Permissões do usuário comum', { tag: '@regressao' }, () => {
+test.describe('Permissões do usuário comum', { tag: '@regression' }, () => {
   test('não deve permitir que usuário comum cadastre produto', async ({ api, clienteLogado }) => {
     // O token é válido (login funcionou), mas o perfil não tem permissão.
     // A diferença entre 401 (quem é você?) e 403 (sei quem é, mas não pode)

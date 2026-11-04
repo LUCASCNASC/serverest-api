@@ -16,9 +16,10 @@ import type { Carrinho, ItemDoCarrinho, ProdutoCadastrado } from '../src/tipos';
  *
  * Tags:
  *   @desafio-tecnico → é exatamente o fluxo obrigatório pedido no desafio;
- *   @regressao       → como todo teste, faz parte da suíte completa.
+ *   @regression      → como todo teste, faz parte da suíte completa;
+ *   @critical        → cenários repetidos na investigação semanal de flakiness.
  */
-test.describe('Fluxo de compra', { tag: ['@desafio-tecnico', '@regressao'] }, () => {
+test.describe('Fluxo de compra', { tag: ['@desafio-tecnico', '@regression', '@critical'] }, () => {
   let idUsuario: string;
   let token: string;
   let produtos: ProdutoCadastrado[];

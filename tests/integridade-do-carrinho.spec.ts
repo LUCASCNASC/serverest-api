@@ -9,7 +9,7 @@ import { conferirEstoque } from '../src/verificacoes';
  *   - com os dados vinculados: produto e usuário não somem nem mudam por baixo
  *     de um carrinho em andamento.
  */
-test.describe('Integridade entre clientes', { tag: '@regressao' }, () => {
+test.describe('Integridade entre clientes', { tag: '@regression' }, () => {
   test('concluir a compra de um cliente não afeta o carrinho de outro', async ({
     api,
     adminComProdutos,
@@ -100,7 +100,7 @@ test.describe('Integridade entre clientes', { tag: '@regressao' }, () => {
   });
 });
 
-test.describe('Integridade dos dados vinculados ao carrinho', { tag: '@regressao' }, () => {
+test.describe('Integridade dos dados vinculados ao carrinho', { tag: '@regression' }, () => {
   test('não deve excluir produto que faz parte de um carrinho', async ({
     api,
     adminComProdutos,

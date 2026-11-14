@@ -88,6 +88,36 @@ test.describe('Regras de cadastro e login', { tag: '@regression' }, () => {
     expect(resposta.status()).toBe(401);
     expect(await resposta.json()).toEqual({ message: MENSAGENS.loginInvalido });
   });
+
+  test('deve permitir login com o novo e-mail depois de editar os dados do usuário', async ({
+    api,
+    clienteLogado,
+  }) => {
+    const usuarioAtualizado = {
+      ...clienteLogado.dados,
+      email: novoUsuarioComum().email,
+    };
+    const atualizacao = await api.usuarios.editar(clienteLogado.idUsuario, usuarioAtualizado);
+
+    expect(atualizacao.status()).toBe(200);
+    expect(await atualizacao.json()).toEqual({ message: MENSAGENS.registroAlterado });
+
+    const loginComEmailAntigo = await api.login.entrar(
+      clienteLogado.dados.email,
+      clienteLogado.dados.password,
+    );
+    expect(loginComEmailAntigo.status()).toBe(401);
+    expect(await loginComEmailAntigo.json()).toEqual({ message: MENSAGENS.loginInvalido });
+
+    const loginComEmailNovo = await api.login.entrar(
+      usuarioAtualizado.email,
+      usuarioAtualizado.password,
+    );
+    expect(loginComEmailNovo.status()).toBe(200);
+    const corpo = await loginComEmailNovo.json();
+    expect(corpo.message).toBe(MENSAGENS.loginComSucesso);
+    expect(lerConteudoDoJwt(corpo.authorization).email).toBe(usuarioAtualizado.email);
+  });
 });
 
 test.describe('Permissões do administrador', { tag: '@regression' }, () => {
@@ -128,6 +158,30 @@ test.describe('Permissões do administrador', { tag: '@regression' }, () => {
 
     expect(resposta.status()).toBe(400);
     expect(await resposta.json()).toEqual({ message: MENSAGENS.nomeDeProdutoRepetido });
+  });
+
+  test('não deve atualizar produto para um nome que já pertence a outro produto', async ({
+    api,
+    adminComProdutos,
+  }) => {
+    const [produtoExistente, produtoAAtualizar] = adminComProdutos.produtos;
+    const resposta = await api.produtos.editar(
+      produtoAAtualizar._id,
+      {
+        nome: produtoExistente.nome,
+        preco: produtoAAtualizar.preco,
+        descricao: produtoAAtualizar.descricao,
+        quantidade: produtoAAtualizar.quantidade,
+      },
+      adminComProdutos.token,
+    );
+
+    expect(resposta.status()).toBe(400);
+    expect(await resposta.json()).toEqual({ message: MENSAGENS.nomeDeProdutoRepetido });
+
+    const consulta = await api.produtos.buscarPorId(produtoAAtualizar._id);
+    expect(consulta.status()).toBe(200);
+    expect(await consulta.json()).toEqual(produtoAAtualizar);
   });
 });
 

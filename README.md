@@ -77,7 +77,7 @@ Cada teste tem uma ou mais categorias:
 
 | Tag                | O que é                                                                      | Testes                                                      |
 | ------------------ | ---------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `@regression`      | A suíte completa. **Todo teste tem esta tag.**                               | Todos (31)                                                  |
+| `@regression`      | A suíte completa. **Todo teste tem esta tag.**                               | Todos (38)                                                  |
 | `@critical`        | Caminhos de maior risco, repetidos na investigação semanal de flakiness      | Fluxo de compra e ciclo de vida do carrinho (4)             |
 | `@smoke`           | Responde rápido à pergunta "o essencial do negócio está funcionando?"        | Smoke tests centralizados por recurso em `tests/smoke/` (5) |
 | `@desafio-tecnico` | O fluxo obrigatório pedido no desafio: usuário → login → produtos → carrinho | Fluxo de compra: concluir e cancelar (2)                    |
@@ -232,7 +232,7 @@ Decisões que vale explicar:
 
 ## Cenários automatizados
 
-São 31 testes. Todos têm a tag `@regression`. A tag `@critical` seleciona um subconjunto para repetição semanal; as outras tags aparecem na coluna ao lado.
+São 38 testes. Todos têm a tag `@regression`. A tag `@critical` seleciona um subconjunto para repetição semanal; as outras tags aparecem na coluna ao lado.
 
 **Smoke tests por recurso** (`tests/smoke/`)
 
@@ -252,17 +252,21 @@ São 31 testes. Todos têm a tag `@regression`. A tag `@critical` seleciona um s
 
 **Regras do carrinho** (`regras-do-carrinho.spec.ts`)
 
-| Cenário                                                               |
-| --------------------------------------------------------------------- |
-| Não permite mais de um carrinho por usuário                           |
-| Não permite comprar mais do que o estoque disponível                  |
-| Não permite o mesmo produto repetido no carrinho                      |
-| Não permite carrinho com produto inexistente                          |
-| Não cria carrinho sem token de autenticação                           |
-| Concluir compra sem carrinho responde 200, mas com mensagem diferente |
-| Não aceita carrinho com quantidade 0                                  |
-| Não aceita carrinho com quantidade -5                                 |
-| Permite uma nova compra depois de concluir a anterior                 |
+| Cenário                                                                                    |
+| ------------------------------------------------------------------------------------------ |
+| Não permite mais de um carrinho por usuário                                                |
+| Não permite comprar mais do que o estoque disponível                                       |
+| Não permite o mesmo produto repetido no carrinho                                           |
+| Não permite carrinho com produto inexistente                                               |
+| Não baixa parcialmente o estoque quando um item do carrinho é inválido ou está sem estoque |
+| Não cria carrinho sem token de autenticação                                                |
+| Não permite cancelar carrinho sem token; o carrinho e o estoque permanecem inalterados     |
+| Concluir compra sem carrinho responde 200, mas com mensagem diferente                      |
+| Cancelar compra sem carrinho responde 200, mas com mensagem diferente                      |
+| Não aceita carrinho com quantidade 0                                                       |
+| Não aceita carrinho com quantidade -5                                                      |
+| Permite uma nova compra depois de concluir a anterior                                      |
+| Permite uma nova compra depois de cancelar a anterior e repõe o estoque                    |
 
 **Integridade do carrinho** (`integridade-do-carrinho.spec.ts`)
 
@@ -284,8 +288,10 @@ São 31 testes. Todos têm a tag `@regression`. A tag `@critical` seleciona um s
 | Usuário comum faz login e recebe um token do próprio usuário              |             |
 | Não cadastra usuário com e-mail já utilizado                              |             |
 | Não faz login com senha errada                                            |             |
+| Após editar o e-mail, rejeita o antigo e permite login com o novo         |             |
 | Administrador cadastra produto, e o produto fica disponível para consulta |             |
 | Não cadastra produto com nome já utilizado                                |             |
+| Não atualiza produto para um nome já utilizado e preserva seus dados      |             |
 | Usuário comum não pode cadastrar produto (403)                            |             |
 | Usuário comum compra produtos cadastrados por um administrador            |             |
 
@@ -343,7 +349,7 @@ O critério foi priorizar o que, se quebrar, causa prejuízo ao negócio ou ao c
 - **As regras e os limites que protegem o estoque e o dinheiro:** um carrinho por usuário, estoque insuficiente, quantidade zero ou negativa, produto e usuário que não podem ser excluídos, preço congelado no carrinho.
 - **A interação entre dois clientes e entre os dois perfis**, porque é onde aparecem os erros de "dado de uma pessoa afetando outra".
 
-A lista completa dos 31 testes está em [Cenários automatizados](#cenários-automatizados).
+A lista completa dos 38 testes está em [Cenários automatizados](#cenários-automatizados).
 
 ### O que decidi não testar (e por quê)
 
@@ -408,7 +414,7 @@ Depois de achar a causa, eu garantiria que o problema não volta:
 
 ## Evidências
 
-A pasta [`evidencias/`](evidencias/) contém evidências arquivadas de uma execução anterior contra `https://serverest.dev` (**26 testes, 26 passando, 0 flaky**). A suíte atual tem 31 testes; o relatório atualizado é publicado como artefato pela pipeline.
+A pasta [`evidencias/`](evidencias/) contém evidências arquivadas de uma execução anterior contra `https://serverest.dev` (**26 testes, 26 passando, 0 flaky**). A suíte atual tem 38 testes; o relatório atualizado é publicado como artefato pela pipeline.
 
 | Arquivo                                                                         | O que é                                                                                                    |
 | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |

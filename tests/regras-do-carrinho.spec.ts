@@ -74,6 +74,50 @@ test.describe('Regras do carrinho', { tag: '@regression' }, () => {
     expect(await resposta.json()).toMatchObject({ message: MENSAGENS.produtoNaoEncontrado });
   });
 
+  test('não deve baixar o estoque dos itens válidos quando outro produto não existe', async ({
+    api,
+    adminComProdutos,
+    clienteLogado,
+  }) => {
+    const [produto] = adminComProdutos.produtos;
+
+    const resposta = await api.carrinhos.cadastrar(
+      [
+        { idProduto: produto._id, quantidade: 2 },
+        { idProduto: 'produtoQueNaoExiste', quantidade: 1 },
+      ],
+      clienteLogado.token,
+    );
+
+    expect(resposta.status()).toBe(400);
+    expect(await resposta.json()).toMatchObject({ message: MENSAGENS.produtoNaoEncontrado });
+    await conferirEstoque(api, produto, produto.quantidade);
+  });
+
+  test('não deve baixar parcialmente o estoque quando um item do carrinho está sem estoque', async ({
+    api,
+    adminComProdutos,
+    clienteLogado,
+  }) => {
+    const [produtoDisponivel, produtoSemEstoqueSuficiente] = adminComProdutos.produtos;
+
+    const resposta = await api.carrinhos.cadastrar(
+      [
+        { idProduto: produtoDisponivel._id, quantidade: 1 },
+        {
+          idProduto: produtoSemEstoqueSuficiente._id,
+          quantidade: produtoSemEstoqueSuficiente.quantidade + 1,
+        },
+      ],
+      clienteLogado.token,
+    );
+
+    expect(resposta.status()).toBe(400);
+    expect(await resposta.json()).toMatchObject({ message: MENSAGENS.estoqueInsuficiente });
+    await conferirEstoque(api, produtoDisponivel, produtoDisponivel.quantidade);
+    await conferirEstoque(api, produtoSemEstoqueSuficiente, produtoSemEstoqueSuficiente.quantidade);
+  });
+
   test('não deve criar carrinho sem token de autenticação', async ({ api, adminComProdutos }) => {
     const [produto] = adminComProdutos.produtos;
 
@@ -84,12 +128,44 @@ test.describe('Regras do carrinho', { tag: '@regression' }, () => {
     await conferirEstoque(api, produto, produto.quantidade);
   });
 
+  test('não deve permitir cancelar um carrinho sem token e nem alterar seu estoque', async ({
+    api,
+    adminComProdutos,
+    clienteLogado,
+  }) => {
+    const [produto] = adminComProdutos.produtos;
+    const cadastro = await api.carrinhos.cadastrar(
+      [{ idProduto: produto._id, quantidade: 2 }],
+      clienteLogado.token,
+    );
+    expect(cadastro.status()).toBe(201);
+    const { _id: idCarrinho } = await cadastro.json();
+
+    const resposta = await api.carrinhos.cancelarCompra('');
+
+    expect(resposta.status()).toBe(401);
+    expect(await resposta.json()).toEqual({ message: MENSAGENS.tokenInvalido });
+    const carrinho = await api.carrinhos.buscarPorId(idCarrinho);
+    expect(carrinho.status()).toBe(200);
+    await conferirEstoque(api, produto, produto.quantidade - 2);
+  });
+
   test('concluir compra sem carrinho responde 200, mas com mensagem diferente', async ({
     api,
     adminComProdutos,
   }) => {
     // Sem carrinho, a API mantém o status 200; a mensagem identifica o resultado real.
     const resposta = await api.carrinhos.concluirCompra(adminComProdutos.token);
+
+    expect(resposta.status()).toBe(200);
+    expect(await resposta.json()).toEqual({ message: MENSAGENS.usuarioSemCarrinho });
+  });
+
+  test('cancelar compra sem carrinho responde 200, mas com mensagem diferente', async ({
+    api,
+    clienteLogado,
+  }) => {
+    const resposta = await api.carrinhos.cancelarCompra(clienteLogado.token);
 
     expect(resposta.status()).toBe(200);
     expect(await resposta.json()).toEqual({ message: MENSAGENS.usuarioSemCarrinho });
@@ -161,5 +237,36 @@ test.describe('Ciclo de vida do carrinho', { tag: '@regression' }, () => {
         produtos: [{ idProduto: produtoB._id, quantidade: 1 }],
       });
     });
+  });
+
+  test('deve permitir uma nova compra depois de cancelar a anterior e repor o estoque', async ({
+    api,
+    adminComProdutos,
+    clienteLogado,
+  }) => {
+    const [produtoA, produtoB] = adminComProdutos.produtos;
+
+    const primeiroCarrinho = await api.carrinhos.cadastrar(
+      [{ idProduto: produtoA._id, quantidade: 2 }],
+      clienteLogado.token,
+    );
+    expect(primeiroCarrinho.status()).toBe(201);
+    const { _id: idPrimeiroCarrinho } = await primeiroCarrinho.json();
+    await conferirEstoque(api, produtoA, produtoA.quantidade - 2);
+
+    const cancelamento = await api.carrinhos.cancelarCompra(clienteLogado.token);
+    expect(cancelamento.status()).toBe(200);
+    expect(await cancelamento.json()).toEqual({ message: MENSAGENS.compraCancelada });
+    await conferirEstoque(api, produtoA, produtoA.quantidade);
+
+    const segundoCarrinho = await api.carrinhos.cadastrar(
+      [{ idProduto: produtoB._id, quantidade: 1 }],
+      clienteLogado.token,
+    );
+    expect(segundoCarrinho.status()).toBe(201);
+    const { _id: idSegundoCarrinho } = await segundoCarrinho.json();
+
+    expect(idSegundoCarrinho).not.toBe(idPrimeiroCarrinho);
+    await conferirEstoque(api, produtoB, produtoB.quantidade - 1);
   });
 });

@@ -28,23 +28,30 @@ env:
 
 jobs:
   api-health:
-    name: Saúde da API
+    name: Disponibilidade da API pública (informativo)
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    outputs:
+      result: ${{ steps.public-check.outputs.result }}
+    env:
+      PUBLIC_BASE_URL: ${{ vars.BASE_URL || 'https://serverest.dev' }}
     steps:
-      - name: Verificar se a ServeRest responde
+      - name: Verificar disponibilidade sem bloquear a suíte isolada
+        id: public-check
         run: |
           for recurso in usuarios produtos carrinhos; do
-            url="$BASE_URL/$recurso"
+            url="$PUBLIC_BASE_URL/$recurso"
             echo "Verificando $url"
             status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
-              --retry 5 --retry-delay 10 --retry-all-errors --max-time 15 "$url")
+              --retry 5 --retry-delay 10 --retry-all-errors --max-time 15 "$url" || true)
             if [ "$status" != "200" ]; then
-              echo "::error title=API indisponível::$url respondeu $status. Os testes não foram executados."
-              exit 1
+              echo "::warning title=API pública indisponível::$url respondeu $status. Os testes isolados continuam."
+              echo "result=warning" >> "$GITHUB_OUTPUT"
+              exit 0
             fi
             echo "OK ($status)"
           done
+          echo "result=success" >> "$GITHUB_OUTPUT"
 
   lint:
     name: Lint e tipos
@@ -69,9 +76,10 @@ jobs:
   smoke:
     name: Smoke tests
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.suite == 'smoke')
-    needs: api-health
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      BASE_URL: http://127.0.0.1:3000
     steps:
       - name: Baixar o código
         uses: actions/checkout@v4
@@ -84,6 +92,9 @@ jobs:
 
       - name: Instalar as dependências
         run: npm ci
+
+      - name: Iniciar ServeRest isolada para este job
+        run: bash scripts/start-test-api.sh
 
       - name: Executar smoke tests
         run: npx playwright test --grep @smoke --workers=1
@@ -102,7 +113,6 @@ jobs:
     if: >-
       ${{
         !cancelled() &&
-        needs.api-health.result == 'success' &&
         (needs.smoke.result == 'success' || needs.smoke.result == 'skipped') &&
         (
           github.event_name == 'pull_request' ||
@@ -110,9 +120,11 @@ jobs:
           (github.event_name == 'workflow_dispatch' && (inputs.suite == 'regression' || inputs.suite == 'desafio-tecnico'))
         )
       }}
-    needs: [api-health, smoke]
+    needs: [smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      BASE_URL: http://127.0.0.1:3000
     strategy:
       fail-fast: false
       matrix:
@@ -129,6 +141,9 @@ jobs:
 
       - name: Instalar as dependências
         run: npm ci
+
+      - name: Iniciar ServeRest isolada para este shard
+        run: bash scripts/start-test-api.sh
 
       - name: Executar os testes do shard
         shell: bash
@@ -152,9 +167,10 @@ jobs:
   nightly-full:
     name: Regressão completa noturna
     if: github.event_name == 'schedule' && github.event.schedule == '0 12 * * 1-5'
-    needs: api-health
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      BASE_URL: http://127.0.0.1:3000
     steps:
       - name: Baixar o código
         uses: actions/checkout@v4
@@ -167,6 +183,9 @@ jobs:
 
       - name: Instalar as dependências
         run: npm ci
+
+      - name: Iniciar ServeRest isolada para esta execução noturna
+        run: bash scripts/start-test-api.sh
 
       - name: Executar a regressão completa
         run: npx playwright test --grep @regression --workers=2
@@ -187,9 +206,10 @@ jobs:
         (github.event_name == 'schedule' && github.event.schedule == '0 13 * * 0') ||
         (github.event_name == 'workflow_dispatch' && inputs.suite == 'flaky-hunt')
       }}
-    needs: api-health
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      BASE_URL: http://127.0.0.1:3000
     steps:
       - name: Baixar o código
         uses: actions/checkout@v4
@@ -202,6 +222,9 @@ jobs:
 
       - name: Instalar as dependências
         run: npm ci
+
+      - name: Iniciar ServeRest isolada para a investigação
+        run: bash scripts/start-test-api.sh
 
       - name: Repetir os cenários críticos 10 vezes
         run: npx playwright test --grep @critical --repeat-each=10 --workers=1 --retries=0
@@ -264,7 +287,7 @@ jobs:
       - name: Resumir execução
         if: ${{ !cancelled() }}
         env:
-          API_HEALTH_RESULT: ${{ needs.api-health.result }}
+          API_HEALTH_RESULT: ${{ needs.api-health.outputs.result }}
           LINT_RESULT: ${{ needs.lint.result }}
           SMOKE_RESULT: ${{ needs.smoke.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
@@ -276,7 +299,7 @@ jobs:
             echo
             echo "| Job | Resultado |"
             echo "| --- | --- |"
-            echo "| Saúde da API | $API_HEALTH_RESULT |"
+            echo "| Disponibilidade da API pública (informativo) | $API_HEALTH_RESULT |"
             echo "| Lint e tipos | $LINT_RESULT |"
             echo "| Smoke | $SMOKE_RESULT |"
             echo "| Regressão em shards | $E2E_RESULT |"
@@ -290,7 +313,7 @@ jobs:
         if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
         uses: actions/github-script@v7
         env:
-          API_HEALTH_RESULT: ${{ needs.api-health.result }}
+          API_HEALTH_RESULT: ${{ needs.api-health.outputs.result }}
           LINT_RESULT: ${{ needs.lint.result }}
           SMOKE_RESULT: ${{ needs.smoke.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
@@ -304,7 +327,7 @@ jobs:
               '',
               '| Job | Resultado |',
               '| --- | --- |',
-              `| Saúde da API | ${process.env.API_HEALTH_RESULT} |`,
+              `| Disponibilidade da API pública (informativo) | ${process.env.API_HEALTH_RESULT} |`,
               `| Lint e tipos | ${process.env.LINT_RESULT} |`,
               `| Smoke | ${process.env.SMOKE_RESULT} |`,
               `| Regressão em shards | ${process.env.E2E_RESULT} |`,

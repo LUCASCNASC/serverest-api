@@ -200,7 +200,7 @@ test.describe('Limites do estoque', { tag: '@regression' }, () => {
   // primeiro passo do teste de disputa de estoque, em integridade-do-carrinho.
 });
 
-test.describe('Ciclo de vida do carrinho', { tag: '@regression' }, () => {
+test.describe('Ciclo de vida do carrinho', { tag: ['@regression', '@critical'] }, () => {
   test('deve permitir uma nova compra depois de concluir a anterior', async ({
     api,
     adminComProdutos,

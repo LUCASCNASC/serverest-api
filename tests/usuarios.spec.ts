@@ -46,11 +46,13 @@ for (const perfil of PERFIS) {
 
     test('deve fazer login e receber um token do próprio usuário', async ({ api, massa }) => {
       const usuario = perfil.novoUsuario();
+      let idUsuario: string;
 
       await test.step('Pré-condição: cadastrar o usuário', async () => {
         const resposta = await api.usuarios.cadastrar(usuario);
         expect(resposta.status()).toBe(201);
-        massa.guardarUsuario((await resposta.json())._id);
+        ({ _id: idUsuario } = await resposta.json());
+        massa.guardarUsuario(idUsuario);
       });
 
       await test.step('Fazer login com e-mail e senha cadastrados', async () => {
@@ -62,7 +64,7 @@ for (const perfil of PERFIS) {
           message: MENSAGENS.loginComSucesso,
           authorization: expect.stringMatching(/^Bearer \S+$/),
         });
-        massa.guardarToken(corpo.authorization);
+        massa.guardarToken(idUsuario, corpo.authorization);
 
         // O token é um JWT. Abrindo o conteúdo dele, conferimos que foi
         // emitido para o usuário que fez login, e não para qualquer outro.
@@ -91,6 +93,7 @@ test.describe('Regras de cadastro e login', { tag: '@regression' }, () => {
 
   test('deve permitir login com o novo e-mail depois de editar os dados do usuário', async ({
     api,
+    massa,
     clienteLogado,
   }) => {
     const usuarioAtualizado = {
@@ -115,6 +118,7 @@ test.describe('Regras de cadastro e login', { tag: '@regression' }, () => {
     );
     expect(loginComEmailNovo.status()).toBe(200);
     const corpo = await loginComEmailNovo.json();
+    massa.guardarToken(clienteLogado.idUsuario, corpo.authorization);
     expect(corpo.message).toBe(MENSAGENS.loginComSucesso);
     expect(lerConteudoDoJwt(corpo.authorization).email).toBe(usuarioAtualizado.email);
   });

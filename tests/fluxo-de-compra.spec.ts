@@ -50,7 +50,7 @@ test.describe('Fluxo de compra', { tag: ['@desafio-tecnico', '@regression', '@cr
       expect(corpo.authorization).toMatch(/^Bearer \S+$/);
 
       token = corpo.authorization;
-      massa.guardarToken(token);
+      massa.guardarToken(idUsuario, token);
     });
 
     await test.step('3. Cadastrar com o token os produtos da compra', async () => {

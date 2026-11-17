@@ -140,33 +140,34 @@ A ServeRest local é útil quando o ambiente público estiver fora do ar, lento 
 
 ### Problemas comuns
 
-| Sintoma                                 | Causa provável                                     | O que fazer                                                                                                           |
-| --------------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `ECONNRESET` ou timeout                 | Instabilidade do ambiente público                  | O teste já é repetido 1 vez automaticamente. Se persistir, tente mais tarde ou use a ServeRest local.                 |
-| Status `429` (Too Many Requests)        | Muitas requisições simultâneas ao ambiente público | Não aumente o número de `workers` no `playwright.config.ts`. Para rodar muitas vezes seguidas, use a ServeRest local. |
-| Teste marcado como `flaky` no relatório | Falhou na 1ª tentativa e passou na 2ª              | Geralmente é instabilidade de rede. Se for sempre o mesmo teste, investigue.                                          |
-| Falhas perto da meia-noite              | A base da ServeRest é apagada toda noite           | Rode novamente depois do reset.                                                                                       |
-| Erro de sintaxe ao instalar ou rodar    | Versão do Node abaixo da 22                        | Atualize o Node (veja o passo 1).                                                                                     |
+| Sintoma                                 | Causa provável                                     | O que fazer                                                                                                    |
+| --------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `ECONNRESET` ou timeout                 | Instabilidade do ambiente público                  | Fora da CI, o teste é repetido 1 vez. Na CI não há retry, para que falhas intermitentes não fiquem mascaradas. |
+| Status `429` (Too Many Requests)        | Muitas requisições simultâneas ao ambiente público | Não aumente o número de `workers` ao testar contra o ambiente público. A CI usa uma instância local isolada.   |
+| Teste marcado como `flaky` no relatório | Falhou na 1ª tentativa e passou na 2ª localmente   | Investigue se o mesmo teste falha repetidamente; a CI falha na primeira tentativa e mantém o sinal visível.    |
+| Falhas perto da meia-noite              | A base da ServeRest é apagada toda noite           | Rode novamente depois do reset.                                                                                |
+| Erro de sintaxe ao instalar ou rodar    | Versão do Node abaixo da 22                        | Atualize o Node (veja o passo 1).                                                                              |
 
 ## Pipeline (GitHub Actions)
 
-A pipeline fica em [`.github/workflows/testes-api.yml`](.github/workflows/testes-api.yml). A composição separa validações rápidas, regressão, execução repetida dos cenários críticos e publicação dos resultados:
+A pipeline fica em [`.github/workflows/testes-api.yml`](.github/workflows/testes-api.yml). Cada job que executa testes inicia uma instância isolada do ServeRest `3.2.2` em `127.0.0.1`; assim, shards e workflows não compartilham massa nem dependem da disponibilidade, do rate limit ou do reset noturno da API pública. A checagem pública é apenas informativa. Na CI, retries são desativados para que não escondam falhas intermitentes.
 
 ```
-Saúde da API ──► Smoke (PR) ──► Regressão em 2 shards
-Lint e tipos ─────────────────► Relatório consolidado
+Disponibilidade pública (informativa)
+Lint e tipos ──► Smoke (PR) ──► Regressão em 2 shards
+                         └────► Relatório consolidado
 Agendada: regressão completa ou flaky hunt
 ```
 
-| Job                            | Gatilho                        | O que faz                                                                                                                                                                |
-| ------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Saúde da API**               | Todos                          | Verifica `/usuarios`, `/produtos` e `/carrinhos` antes dos testes e tenta novamente em caso de falha.                                                                    |
-| **Lint e tipos**               | Todos                          | Executa `npm run verificar` e bloqueia a validação quando tipos, lint ou formatação falham.                                                                              |
-| **Smoke**                      | Pull Request e execução manual | Executa `@smoke` com 1 worker antes da regressão, limitando chamadas simultâneas à API pública.                                                                          |
-| **Regressão**                  | Pull Request e push em `main`  | Executa `@critical` + `@regression` em 2 shards, cada um com 1 worker. Como todos os testes pertencem a `@regression`, a suíte completa é coberta.                       |
-| **Regressão completa noturna** | Segunda a sexta                | Executa toda a suíte. Não há matriz de navegadores porque o projeto testa somente API HTTP.                                                                              |
-| **Investigação de flakiness**  | Domingo e execução manual      | Repete os cenários `@critical` 10 vezes, em sequência e sem retry, para tornar falhas intermitentes visíveis.                                                            |
-| **Consolidar resultados**      | Após os jobs                   | Mescla os relatórios Playwright, publica o HTML por 14 dias, escreve um resumo e atualiza um comentário no PR quando o token tem permissão (PRs do próprio repositório). |
+| Job                            | Gatilho                        | O que faz                                                                                                                                                                     |
+| ------------------------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Disponibilidade da API**     | Todos                          | Verifica `/usuarios`, `/produtos` e `/carrinhos` no serviço público; é informativa e não bloqueia a suíte isolada.                                                            |
+| **Lint e tipos**               | Todos                          | Executa `npm run verificar` e bloqueia a validação quando tipos, lint ou formatação falham.                                                                                   |
+| **Smoke**                      | Pull Request e execução manual | Executa `@smoke` com 1 worker na instância local efêmera.                                                                                                                     |
+| **Regressão**                  | Pull Request e push em `main`  | Executa `@critical` + `@regression` em 2 shards independentes, cada um com sua instância local e 1 worker. Como todos os testes pertencem a `@regression`, a suíte é coberta. |
+| **Regressão completa noturna** | Segunda a sexta                | Executa toda a suíte na instância local. Não há matriz de navegadores porque o projeto testa somente API HTTP.                                                                |
+| **Investigação de flakiness**  | Domingo e execução manual      | Repete os cenários `@critical` 10 vezes, em sequência e sem retry, na instância local isolada.                                                                                |
+| **Consolidar resultados**      | Após os jobs                   | Mescla os relatórios Playwright, publica o HTML por 14 dias, escreve um resumo e atualiza um comentário no PR quando o token tem permissão (PRs do próprio repositório).      |
 
 **Quando roda:**
 
@@ -178,11 +179,11 @@ Agendada: regressão completa ou flaky hunt
 | Domingo, às 10h (Brasília)                                          | `@critical` repetidos 10 vezes para investigar flakiness.                                    |
 | Manual, pela aba **Actions** → **Testes de API** → **Run workflow** | Escolha `regression`, `smoke`, `desafio-tecnico` ou `flaky-hunt`.                            |
 
-**Por que 2 shards com 1 worker:** dividem a regressão sem aumentar a concorrência total de testes em relação aos 2 workers anteriores. Os shards só iniciam depois do smoke no PR; não há execução paralela de smoke e regressão contra o serviço público.
+**Por que 2 shards com 1 worker:** dividem a regressão sem aumentar a concorrência total de testes em relação aos 2 workers anteriores. Os shards só iniciam depois do smoke no PR e cada job usa sua própria instância local.
 
 **Onde ver o relatório:** na execução, em **Summary** → **Artifacts** → `relatorio-playwright`. Baixe, descompacte e abra o `index.html`. Os traces são mantidos apenas nos relatórios dos testes que falharam; os artefatos HTML expiram em 14 dias.
 
-**Bloqueio de merge:** para tornar a validação obrigatória, configure nas regras da branch `main` os checks `Saúde da API`, `Lint e tipos`, `Smoke tests` e os dois checks `Regressão (shard ...)`. Não marque `Consolidar resultados` como obrigatório: ele existe para publicar o diagnóstico mesmo quando algum job falha.
+**Bloqueio de merge:** configure nas regras da branch `main` os checks `Lint e tipos`, `Smoke tests` e os dois checks `Regressão (shard ...)`. A disponibilidade da API pública é somente informativa; não a marque como obrigatória. Também não marque `Consolidar resultados` como obrigatório: ele existe para publicar o diagnóstico mesmo quando algum job falha.
 
 **Outro ambiente:** para rodar a pipeline contra outro endereço, crie a variável `BASE_URL` em **Settings** → **Secrets and variables** → **Actions** → **Variables**. Sem ela, a pipeline usa `https://serverest.dev`.
 
@@ -303,7 +304,7 @@ A base da ServeRest **é apagada toda noite**. Daí vêm três consequências:
 
 1. Nenhum teste pode depender de dados existentes (IDs fixos, usuário "de teste" cadastrado antes). Tudo é criado na hora, a cada execução.
 2. Os dados são únicos (e-mail e nome de produto com sufixo aleatório), porque durante o dia outras pessoas usam o mesmo ambiente, e a API não aceita e-mail nem nome de produto repetidos.
-3. Ao final de cada teste, o que foi criado é apagado (carrinho → produtos → usuário, nessa ordem, porque a API bloqueia a exclusão de produto em carrinho e de usuário com carrinho). A limpeza é uma cortesia com o ambiente compartilhado, não uma dependência: se algo sobrar, o reset noturno resolve. Por isso a limpeza não faz o teste falhar.
+3. Ao final de cada teste, o que foi criado é apagado (carrinho → produtos → usuário, nessa ordem, porque a API bloqueia a exclusão de produto em carrinho e de usuário com carrinho). A limpeza é repetida até três vezes em erros transitórios; falhas persistentes são anexadas ao relatório e avisadas no log, sem substituir o resultado do teste.
 
 ### Cenários mais críticos e por quê
 
@@ -332,10 +333,8 @@ A base da ServeRest **é apagada toda noite**. Daí vêm três consequências:
 
   São defeitos da documentação, não critérios para alterar o comportamento da API. Os testes registram o status HTTP e o corpo efetivamente observado; os casos de exclusão bloqueada confirmam também que o recurso continua disponível.
 
-- **O reset noturno pode atingir uma execução em andamento.** Um teste rodando perto da virada do dia pode ter os dados apagados no meio e falhar sem bug real. Os testes são curtos (segundos) e criam tudo na hora, o que reduz bastante a janela, mas o risco existe e convém lembrar dele ao analisar uma falha nesse horário.
-- **O ambiente é público e compartilhado.** Durante a automação ele derrubou conexões (`ECONNRESET`) e respondeu `429 Too Many Requests` quando recebeu muitas requisições simultâneas. Para lidar com isso:
-  - o paralelismo está limitado a 2 workers;
-  - cada teste tem 1 nova tentativa. O Playwright marca como `flaky` o teste que só passou na segunda vez, então a instabilidade continua visível no relatório e não fica escondida.
+- **O ambiente público usado por execuções locais é compartilhado.** Ele pode derrubar conexões (`ECONNRESET`), responder `429 Too Many Requests` ou ser reiniciado à noite. Para reduzir a exposição, a CI executa em instâncias locais efêmeras e independentes; execuções locais continuam podendo apontar para o serviço público por padrão.
+- **Retries não devem mascarar instabilidade.** Localmente, um retry ajuda a investigar: o Playwright marca como `flaky` o teste que passa na segunda tentativa. Na CI, retries são zero e a primeira falha fica visível, inclusive no flaky-hunt.
 - **Dados expostos sem autenticação.** O `GET /carrinhos` é público e lista os carrinhos de _todos_ os usuários, e o `GET /usuarios` devolve inclusive a senha de cada usuário. Como a ServeRest é uma ferramenta de estudo, isso deve ser intencional, mas num sistema real seria um problema grave de privacidade e segurança, e eu reportaria.
 - **O token carrega a senha em texto aberto.** O JWT do login traz no conteúdo o e-mail **e a senha** do usuário, legíveis por qualquer pessoa que tenha o token. Num sistema real, isso seria um achado de segurança grave.
 - **O token vale 600 segundos.** Os testes não são afetados porque cada um faz login novo e termina em segundos.

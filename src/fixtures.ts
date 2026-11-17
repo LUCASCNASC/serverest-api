@@ -1,4 +1,4 @@
-import { test as base, expect } from '@playwright/test';
+import { test as base, expect, type TestInfo } from '@playwright/test';
 import { ServeRest } from './api/serverest';
 import { novoProduto, novoUsuarioAdministrador, novoUsuarioComum } from './dados/fabrica';
 import type { ProdutoCadastrado, Usuario } from './tipos';
@@ -6,13 +6,12 @@ import type { ProdutoCadastrado, Usuario } from './tipos';
 /**
  * Anota tudo o que o teste criou para apagar no final.
  *
- * A base é zerada toda noite, mas durante o dia o ambiente é compartilhado:
- * limpar o que criamos evita deixar lixo para outras pessoas e mantém
- * cada execução independente da anterior.
+ * Os dados são removidos ao final para evitar resíduos no ambiente e
+ * manter cada execução independente da anterior.
  */
 export class MassaDeTeste {
   private idsUsuarios: string[] = [];
-  private tokens: string[] = [];
+  private tokensPorUsuario = new Map<string, string>();
   // Cada produto guarda o token do admin que o criou: só ele pode excluí-lo.
   private produtos: { idProduto: string; tokenAdmin: string }[] = [];
 
@@ -20,30 +19,73 @@ export class MassaDeTeste {
     this.idsUsuarios.push(idUsuario);
   }
 
-  guardarToken(token: string) {
-    this.tokens.push(token);
+  guardarToken(idUsuario: string, token: string) {
+    this.tokensPorUsuario.set(idUsuario, token);
   }
 
   guardarProduto(idProduto: string, tokenAdmin: string) {
     this.produtos.push({ idProduto, tokenAdmin });
   }
 
-  async limpar(api: ServeRest) {
+  async limpar(api: ServeRest): Promise<string[]> {
+    const falhas: string[] = [];
+
+    const executarLimpeza = async (
+      descricao: string,
+      operacao: () => Promise<{ status(): number }>,
+    ) => {
+      let ultimoErro = '';
+
+      for (let tentativa = 1; tentativa <= 3; tentativa++) {
+        try {
+          const resposta = await operacao();
+          const status = resposta.status();
+          if (status === 200) return;
+
+          ultimoErro = `HTTP ${status}`;
+          if (status !== 429 && status < 500) break;
+        } catch (erro) {
+          ultimoErro = erro instanceof Error ? erro.message : String(erro);
+        }
+
+        if (tentativa < 3) {
+          await new Promise((resolve) => setTimeout(resolve, 250 * tentativa));
+        }
+      }
+
+      falhas.push(`${descricao}: ${ultimoErro}`);
+    };
+
     // A ordem importa: a API não deixa excluir produto que está em carrinho,
     // nem usuário que tem carrinho. Então primeiro os carrinhos saem (cancelando,
     // para o estoque voltar), depois os produtos e por último os usuários.
-    // As respostas não são verificadas de propósito: limpeza não é o objeto do
-    // teste e, se algo sobrar, a base é apagada à noite de qualquer forma.
-    for (const token of this.tokens) {
-      await api.carrinhos.cancelarCompra(token);
+    for (const token of this.tokensPorUsuario.values()) {
+      await executarLimpeza('Cancelar carrinho do token de teste', () =>
+        api.carrinhos.cancelarCompra(token),
+      );
     }
     for (const { idProduto, tokenAdmin } of this.produtos) {
-      await api.produtos.excluir(idProduto, tokenAdmin);
+      await executarLimpeza(`Excluir produto ${idProduto}`, () =>
+        api.produtos.excluir(idProduto, tokenAdmin),
+      );
     }
     for (const idUsuario of this.idsUsuarios) {
-      await api.usuarios.excluir(idUsuario);
+      await executarLimpeza(`Excluir usuário ${idUsuario}`, () => api.usuarios.excluir(idUsuario));
     }
+
+    return falhas;
   }
+}
+
+async function reportarFalhasDeLimpeza(falhas: string[], testInfo: TestInfo) {
+  if (falhas.length === 0) return;
+
+  const detalhes = falhas.join('\n');
+  console.warn(`Falha ao limpar dados de teste:\n${detalhes}`);
+  await testInfo.attach('falhas-limpeza-dados-de-teste', {
+    body: detalhes,
+    contentType: 'text/plain',
+  });
 }
 
 /** Usuário já cadastrado e logado. */
@@ -78,7 +120,7 @@ async function cadastrarELogar(api: ServeRest, massa: MassaDeTeste, usuario: Usu
   const login = await api.login.entrar(usuario.email, usuario.password);
   expect(login.status(), 'pré-condição: fazer login').toBe(200);
   const { authorization: token } = await login.json();
-  massa.guardarToken(token);
+  massa.guardarToken(idUsuario, token);
 
   return { dados: usuario, idUsuario, token };
 }
@@ -88,10 +130,10 @@ export const test = base.extend<Fixtures>({
     await use(new ServeRest(request));
   },
 
-  massa: async ({ api }, use) => {
+  massa: async ({ api }, use, testInfo) => {
     const massa = new MassaDeTeste();
     await use(massa);
-    await massa.limpar(api);
+    await reportarFalhasDeLimpeza(await massa.limpar(api), testInfo);
   },
 
   // As fixtures abaixo são pré-condições: cadastro, login e produto aqui são só

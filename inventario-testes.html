@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Inventário de testes | ServeRest API</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #17243b;
+        --muted: #526179;
+        --line: #dce5ef;
+        --blue: #155fc0;
+        --bg: #f3f6fb;
+        --white: #fff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--bg);
+        font:
+          16px/1.55 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+      }
+      header {
+        background: #102a50;
+        color: white;
+        padding: 3rem 1.5rem 2.4rem;
+      }
+      header .inner,
+      main {
+        max-width: 1200px;
+        margin: auto;
+      }
+      .eyebrow {
+        color: #a9cdfb;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      h1 {
+        font-size: clamp(2rem, 5vw, 3.2rem);
+        line-height: 1.1;
+        margin: 0.55rem 0 1rem;
+      }
+      header p {
+        color: #d1e0f4;
+        max-width: 75ch;
+      }
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem 1.3rem;
+        margin-top: 1.6rem;
+      }
+      nav a {
+        color: white;
+        font-weight: 600;
+      }
+      a {
+        color: var(--blue);
+      }
+      main {
+        padding: 1.5rem;
+      }
+      section {
+        margin: 2rem 0;
+      }
+      h2 {
+        font-size: 1.65rem;
+        line-height: 1.2;
+        margin-bottom: 0.7rem;
+      }
+      h3 {
+        margin: 1.4rem 0 0.4rem;
+      }
+      .lead,
+      .muted {
+        color: var(--muted);
+      }
+      .metrics,
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+      }
+      .metric,
+      .card,
+      .notice {
+        background: var(--white);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 1rem 1.2rem;
+      }
+      .metric strong {
+        display: block;
+        color: var(--blue);
+        font-size: 2rem;
+        line-height: 1.2;
+      }
+      .metric span {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .card h3 {
+        margin-top: 0;
+      }
+      .notice {
+        border-left: 4px solid #d39722;
+        background: #fffaf0;
+      }
+      .table-wrap {
+        overflow-x: auto;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        text-align: left;
+      }
+      th,
+      td {
+        padding: 0.8rem 1rem;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        background: #eaf1fa;
+        font-size: 0.83rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      tbody tr:last-child td {
+        border-bottom: 0;
+      }
+      td:first-child {
+        white-space: nowrap;
+        font-weight: 700;
+      }
+      code {
+        background: #edf2f8;
+        padding: 0.1rem 0.3rem;
+        border-radius: 4px;
+        font-size: 0.88em;
+        overflow-wrap: anywhere;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 0.75rem;
+        font-weight: 700;
+        background: #e6f0ff;
+        color: #164c92;
+        border-radius: 999px;
+        padding: 0.13rem 0.5rem;
+        margin: 0.1rem 0.15rem 0.1rem 0;
+        white-space: nowrap;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: end;
+        margin: 1rem 0;
+      }
+      .controls label {
+        font-size: 0.88rem;
+        font-weight: 700;
+        display: grid;
+        gap: 0.3rem;
+      }
+      input,
+      select {
+        font: inherit;
+        color: var(--ink);
+        background: white;
+        border: 1px solid #aebdd0;
+        border-radius: 7px;
+        padding: 0.5rem 0.7rem;
+      }
+      input {
+        min-width: min(20rem, 80vw);
+      }
+      .count {
+        color: var(--muted);
+        margin: 0.5rem 0;
+      }
+      ul {
+        padding-left: 1.3rem;
+      }
+      li {
+        margin: 0.35rem 0;
+      }
+      footer {
+        border-top: 1px solid var(--line);
+        padding: 1.5rem 0 2rem;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      @media print {
+        header {
+          color: #000;
+          background: white;
+        }
+        header p,
+        .eyebrow,
+        nav a {
+          color: #000;
+        }
+        .controls {
+          display: none;
+        }
+        body {
+          background: white;
+        }
+        .table-wrap {
+          overflow: visible;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="inner">
+        <div class="eyebrow">Qualidade de software · fotografia do repositório</div>
+        <h1>Inventário de testes<br />ServeRest API</h1>
+        <p>
+          Estrutura, organização e casos automatizados do projeto Playwright + TypeScript. Análise
+          realizada em 24/11/2026 a partir do código local e da descoberta do Playwright.
+        </p>
+        <nav aria-label="Navegação do relatório">
+          <a href="#visao">Visão geral</a><a href="#estrutura">Estrutura</a
+          ><a href="#cobertura">Cobertura</a><a href="#inventario">Casos de teste</a
+          ><a href="#analise">Análise</a>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <section id="visao">
+        <h2>Visão geral</h2>
+        <p class="lead">
+          O repositório automatiza chamadas HTTP à ServeRest; não contém a implementação do
+          servidor. Os casos abaixo são cenários existentes, não sugestões nem resultados de
+          execução.
+        </p>
+        <div class="metrics">
+          <div class="metric"><strong>56</strong><span>casos descobertos (1 opt-in)</span></div>
+          <div class="metric"><strong>8</strong><span>arquivos de teste</span></div>
+          <div class="metric"><strong>5</strong><span>casos @smoke</span></div>
+          <div class="metric"><strong>4</strong><span>casos @critical</span></div>
+          <div class="metric"><strong>16</strong><span>operações no cliente HTTP</span></div>
+        </div>
+        <p class="notice">
+          <strong>Como interpretar:</strong> <code>npx playwright test --list</code> descobre os
+          casos, mas não os executa. Contagem de operações utilizadas não é cobertura de código nem
+          prova de cobertura total dos requisitos ou da API. As tags são sobrepostas: não some os
+          seus totais.
+        </p>
+      </section>
+
+      <section id="estrutura">
+        <h2>Estrutura e organização</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Cliente HTTP</h3>
+            <p>
+              <a href="src/api/serverest.ts"><code>src/api/serverest.ts</code></a> organiza
+              usuários, login, produtos e carrinhos. Retorna respostas para asserções nos testes; os
+              contratos de sucesso ficam em <a href="src/tipos.ts"><code>src/tipos.ts</code></a
+              >.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Massa e pré-condições</h3>
+            <p>
+              <a href="src/dados/fabrica.ts"><code>src/dados/fabrica.ts</code></a> gera dados
+              únicos. <a href="src/fixtures.ts"><code>src/fixtures.ts</code></a> fornece usuários,
+              produtos, cliente HTTP e limpeza de carrinhos, produtos e usuários.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Verificações</h3>
+            <p>
+              <a href="src/dados/mensagens.ts"><code>src/dados/mensagens.ts</code></a> centraliza
+              mensagens; <a href="src/verificacoes.ts"><code>src/verificacoes.ts</code></a> reúne
+              verificações reutilizadas, como estoque e leitura do JWT.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Suítes</h3>
+            <p>
+              <code>tests/</code> agrupa fluxos de compra, regras, integridade e usuários.
+              <code>tests/smoke/</code> reúne verificações rápidas por recurso.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Configuração e CI</h3>
+            <p>
+              <a href="playwright.config.ts"><code>playwright.config.ts</code></a> define URL,
+              workers, retries e relatórios.
+              <a href=".github/workflows/testes-api.yml"><code>testes-api.yml</code></a> define
+              smoke, shards, execução agendada e relatórios.
+            </p>
+          </article>
+        </div>
+        <h3>Distribuição por arquivo</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Arquivo</th>
+                <th>Casos</th>
+                <th>Responsabilidade</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><a href="tests/fluxo-de-compra.spec.ts">fluxo-de-compra.spec.ts</a></td>
+                <td>2</td>
+                <td>Jornada de compra, conclusão e cancelamento.</td>
+              </tr>
+              <tr>
+                <td>
+                  <a href="tests/integridade-do-carrinho.spec.ts"
+                    >integridade-do-carrinho.spec.ts</a
+                  >
+                </td>
+                <td>6</td>
+                <td>Isolamento entre clientes e integridade de dados vinculados.</td>
+              </tr>
+              <tr>
+                <td><a href="tests/regras-do-carrinho.spec.ts">regras-do-carrinho.spec.ts</a></td>
+                <td>20</td>
+                <td>Validações, limites, autorização e ciclo de vida.</td>
+              </tr>
+              <tr>
+                <td><a href="tests/usuarios.spec.ts">usuarios.spec.ts</a></td>
+                <td>23</td>
+                <td>Perfis, cadastro, login, permissões e produtos.</td>
+              </tr>
+              <tr>
+                <td><a href="tests/smoke/carts.spec.ts">smoke/carts.spec.ts</a></td>
+                <td>2</td>
+                <td>Jornadas rápidas de carrinho.</td>
+              </tr>
+              <tr>
+                <td><a href="tests/smoke/login.spec.ts">smoke/login.spec.ts</a></td>
+                <td>1</td>
+                <td>Autenticação.</td>
+              </tr>
+              <tr>
+                <td><a href="tests/smoke/products.spec.ts">smoke/products.spec.ts</a></td>
+                <td>1</td>
+                <td>CRUD de produtos.</td>
+              </tr>
+              <tr>
+                <td><a href="tests/smoke/users.spec.ts">smoke/users.spec.ts</a></td>
+                <td>1</td>
+                <td>CRUD de usuários.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="cobertura">
+        <h2>Cobertura funcional observada</h2>
+        <p>
+          As 16 operações expostas pelo cliente local são exercitadas em ao menos um cenário:
+          usuários (5), login (1), produtos (5) e carrinhos (5). A contagem considera método e rota
+          distintos, não a variedade de respostas, parâmetros ou regras por operação.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Recurso</th>
+                <th>Operações exercitadas</th>
+                <th>Exemplos de evidência</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Usuários</td>
+                <td>GET /usuarios; POST /usuarios; GET, PUT e DELETE /usuarios/{id}</td>
+                <td>
+                  <a href="tests/smoke/users.spec.ts">Smoke de usuários</a>; perfis e e-mail em
+                  <a href="tests/usuarios.spec.ts">usuarios.spec.ts</a>.
+                </td>
+              </tr>
+              <tr>
+                <td>Login</td>
+                <td>POST /login</td>
+                <td>
+                  <a href="tests/smoke/login.spec.ts">Smoke de login</a>; senha incorreta e troca de
+                  e-mail.
+                </td>
+              </tr>
+              <tr>
+                <td>Produtos</td>
+                <td>GET /produtos; POST /produtos; GET, PUT e DELETE /produtos/{id}</td>
+                <td>
+                  <a href="tests/smoke/products.spec.ts">Smoke de produtos</a>; nome duplicado e
+                  permissões.
+                </td>
+              </tr>
+              <tr>
+                <td>Carrinhos</td>
+                <td>
+                  GET /carrinhos; POST /carrinhos; GET /carrinhos/{id}; DELETE
+                  /carrinhos/concluir-compra; DELETE /carrinhos/cancelar-compra
+                </td>
+                <td>
+                  <a href="tests/fluxo-de-compra.spec.ts">Fluxos de compra</a>; regras de estoque e
+                  integridade.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>Tags:</strong> todos os 56 casos têm <code>@regression</code>; cinco têm
+          <code>@smoke</code>; quatro têm <code>@critical</code>; dois também têm
+          <code>@desafio-tecnico</code>.
+        </p>
+      </section>
+
+      <section id="inventario">
+        <h2>Inventário de casos automatizados</h2>
+        <p class="lead">
+          Cada linha corresponde a um caso descoberto. Os identificadores CT são locais a este
+          relatório; a evidência autoritativa é o arquivo indicado. Casos parametrizados aparecem
+          separadamente.
+        </p>
+        <div class="controls">
+          <label for="busca"
+            >Buscar cenário, resultado ou arquivo<input
+              id="busca"
+              type="search"
+              placeholder="Ex.: estoque, login, 401"
+          /></label>
+          <label for="grupo"
+            >Filtrar por grupo<select id="grupo">
+              <option value="">Todos os grupos</option>
+              <option>Fluxo</option>
+              <option>Integridade</option>
+              <option>Regras</option>
+              <option>Smoke</option>
+              <option>Usuários</option>
+            </select></label
+          >
+          <label for="tag"
+            >Filtrar por tag<select id="tag">
+              <option value="">Todas as tags</option>
+              <option>@regression</option>
+              <option>@smoke</option>
+              <option>@critical</option>
+              <option>@desafio-tecnico</option>
+            </select></label
+          >
+        </div>
+        <p id="contador" class="count" aria-live="polite">56 casos listados</p>
+        <div class="table-wrap">
+          <table id="casos">
+            <thead>
+              <tr>
+                <th>ID / grupo</th>
+                <th>Cenário</th>
+                <th>Resultado verificado</th>
+                <th>Tags e fonte</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-grupo="Fluxo">
+                <td>CT-01<br />Fluxo</td>
+                <td>Criar, consultar e concluir a compra.</td>
+                <td>Carrinho excluído; estoque permanece reduzido.</td>
+                <td>
+                  <span class="tag">@regression</span><span class="tag">@critical</span
+                  ><span class="tag">@desafio-tecnico</span><br /><a
+                    href="tests/fluxo-de-compra.spec.ts"
+                    >fluxo-de-compra.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Fluxo">
+                <td>CT-02<br />Fluxo</td>
+                <td>Criar, consultar e cancelar a compra.</td>
+                <td>Carrinho excluído; estoque retorna ao valor original.</td>
+                <td>
+                  <span class="tag">@regression</span><span class="tag">@critical</span
+                  ><span class="tag">@desafio-tecnico</span><br /><a
+                    href="tests/fluxo-de-compra.spec.ts"
+                    >fluxo-de-compra.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Integridade">
+                <td>CT-03<br />Integridade</td>
+                <td>Concluir a compra de um cliente com outro carrinho ativo.</td>
+                <td>Carrinho do outro cliente e reserva permanecem íntegros.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/integridade-do-carrinho.spec.ts"
+                    >integridade-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Integridade">
+                <td>CT-04<br />Integridade</td>
+                <td>Reservar todo o estoque, impedir outra compra e cancelar.</td>
+                <td>
+                  Estoque zera, segunda compra é recusada; após cancelamento, nova compra é aceita.
+                </td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/integridade-do-carrinho.spec.ts"
+                    >integridade-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Integridade">
+                <td>CT-05<br />Integridade</td>
+                <td>Excluir produto que está em carrinho.</td>
+                <td>HTTP 400 com ID do carrinho; produto permanece consultável.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/integridade-do-carrinho.spec.ts"
+                    >integridade-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Integridade">
+                <td>CT-06<br />Integridade</td>
+                <td>Excluir usuário que possui carrinho.</td>
+                <td>HTTP 400 com ID do carrinho; usuário permanece consultável.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/integridade-do-carrinho.spec.ts"
+                    >integridade-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Integridade">
+                <td>CT-07<br />Integridade</td>
+                <td>Alterar preço do produto depois de adicioná-lo ao carrinho.</td>
+                <td>Preço unitário e total no carrinho mantêm o valor original.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/integridade-do-carrinho.spec.ts"
+                    >integridade-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-08<br />Regras</td>
+                <td>Criar segundo carrinho para o mesmo usuário.</td>
+                <td>HTTP 400; estoque do produto da segunda tentativa não muda.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-09<br />Regras</td>
+                <td>Comprar uma unidade acima do estoque.</td>
+                <td>HTTP 400 por estoque insuficiente; estoque preservado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-10<br />Regras</td>
+                <td>Enviar produto repetido no mesmo carrinho.</td>
+                <td>HTTP 400 com mensagem de produto duplicado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-11<br />Regras</td>
+                <td>Criar carrinho com produto inexistente.</td>
+                <td>HTTP 400 com mensagem de produto não encontrado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-12<br />Regras</td>
+                <td>Enviar produto válido junto de produto inexistente.</td>
+                <td>HTTP 400; estoque do item válido não é reduzido.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-13<br />Regras</td>
+                <td>Enviar itens com disponibilidade insuficiente em um deles.</td>
+                <td>HTTP 400; estoque dos dois produtos permanece igual.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-14<br />Regras</td>
+                <td>Criar carrinho sem token.</td>
+                <td>HTTP 401; estoque permanece igual.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-15<br />Regras</td>
+                <td>Cancelar carrinho sem token.</td>
+                <td>HTTP 401; carrinho e estoque reservado permanecem.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-16<br />Regras</td>
+                <td>Concluir compra sem carrinho.</td>
+                <td>HTTP 200 com mensagem específica de usuário sem carrinho.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-17<br />Regras</td>
+                <td>Cancelar compra sem carrinho.</td>
+                <td>HTTP 200 com mensagem específica de usuário sem carrinho.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-18<br />Regras</td>
+                <td>Criar carrinho com quantidade 0.</td>
+                <td>HTTP 400 por quantidade não positiva; estoque preservado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-19<br />Regras</td>
+                <td>Criar carrinho com quantidade -5.</td>
+                <td>HTTP 400 por quantidade não positiva; estoque preservado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-20<br />Regras</td>
+                <td>Criar nova compra após concluir a anterior.</td>
+                <td>Novo carrinho é aceito e pertence ao cliente.</td>
+                <td>
+                  <span class="tag">@regression</span><span class="tag">@critical</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-21<br />Regras</td>
+                <td>Criar nova compra após cancelar a anterior.</td>
+                <td>Estoque é reposto; novo carrinho tem ID distinto e reserva estoque.</td>
+                <td>
+                  <span class="tag">@regression</span><span class="tag">@critical</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Smoke">
+                <td>CT-22<br />Smoke</td>
+                <td>Listar, criar, consultar e cancelar carrinho.</td>
+                <td>Listagem e dados corretos; cancelamento remove carrinho e repõe estoque.</td>
+                <td>
+                  <span class="tag">@regression</span><span class="tag">@smoke</span><br /><a
+                    href="tests/smoke/carts.spec.ts"
+                    >smoke/carts.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Smoke">
+                <td>CT-23<br />Smoke</td>
+                <td>Concluir uma compra.</td>
+                <td>Carrinho removido; estoque continua reduzido.</td>
+                <td>
+                  <span class="tag">@regression</span><span class="tag">@smoke</span><br /><a
+                    href="tests/smoke/carts.spec.ts"
+                    >smoke/carts.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Smoke">
+                <td>CT-24<br />Smoke</td>
+                <td>Autenticar usuário cadastrado.</td>
+                <td>HTTP 200, token no formato esperado e e-mail correto no JWT.</td>
+                <td>
+                  <span class="tag">@regression</span><span class="tag">@smoke</span><br /><a
+                    href="tests/smoke/login.spec.ts"
+                    >smoke/login.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Smoke">
+                <td>CT-25<br />Smoke</td>
+                <td>Listar, cadastrar, consultar, atualizar e excluir produto.</td>
+                <td>Dados persistidos e atualizados; produto excluído não é encontrado.</td>
+                <td>
+                  <span class="tag">@regression</span><span class="tag">@smoke</span><br /><a
+                    href="tests/smoke/products.spec.ts"
+                    >smoke/products.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Smoke">
+                <td>CT-26<br />Smoke</td>
+                <td>Listar, cadastrar, consultar, atualizar e excluir usuário.</td>
+                <td>Dados persistidos e atualizados; usuário excluído não é encontrado.</td>
+                <td>
+                  <span class="tag">@regression</span><span class="tag">@smoke</span><br /><a
+                    href="tests/smoke/users.spec.ts"
+                    >smoke/users.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-27<br />Usuários</td>
+                <td>Cadastrar usuário administrador.</td>
+                <td>HTTP 201; consulta confirma dados persistidos.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-28<br />Usuários</td>
+                <td>Fazer login como administrador.</td>
+                <td>HTTP 200; token Bearer contém o e-mail do usuário.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-29<br />Usuários</td>
+                <td>Cadastrar usuário comum.</td>
+                <td>HTTP 201; consulta confirma dados persistidos.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-30<br />Usuários</td>
+                <td>Fazer login como usuário comum.</td>
+                <td>HTTP 200; token Bearer contém o e-mail do usuário.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-31<br />Usuários</td>
+                <td>Cadastrar usuário com e-mail já usado.</td>
+                <td>HTTP 400 e mensagem de e-mail duplicado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-32<br />Usuários</td>
+                <td>Fazer login com senha incorreta.</td>
+                <td>HTTP 401 e mensagem de credenciais inválidas.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-33<br />Usuários</td>
+                <td>Trocar o e-mail e testar o login antigo e o novo.</td>
+                <td>E-mail antigo é rejeitado; novo autentica e aparece no token.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-34<br />Usuários</td>
+                <td>Administrador cadastra produto.</td>
+                <td>HTTP 201; consulta confirma os dados cadastrados.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-35<br />Usuários</td>
+                <td>Cadastrar produto com nome já utilizado.</td>
+                <td>HTTP 400 e mensagem de nome duplicado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-36<br />Usuários</td>
+                <td>Atualizar produto para nome já utilizado.</td>
+                <td>HTTP 400; consulta confirma que os dados originais não mudaram.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-37<br />Usuários</td>
+                <td>Usuário comum tenta cadastrar produto.</td>
+                <td>HTTP 403 com mensagem de rota de administrador.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-38<br />Usuários</td>
+                <td>Cliente compra produto cadastrado por administrador.</td>
+                <td>Carrinho pertence ao cliente; conclusão remove o carrinho.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-39<br />Regras</td>
+                <td>Criar carrinho com token malformado.</td>
+                <td>HTTP 401; carrinho ausente e estoque preservado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-40<br />Regras</td>
+                <td>Criar carrinho com token adulterado.</td>
+                <td>HTTP 401; carrinho ausente e estoque preservado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-41<br />Regras</td>
+                <td>Criar carrinho com token de usuário excluído.</td>
+                <td>HTTP 401; carrinho ausente e estoque preservado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-42<br />Regras</td>
+                <td>Criar carrinho com lista vazia.</td>
+                <td>HTTP 400; carrinho ausente e estoque preservado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-43<br />Regras</td>
+                <td>Repetir conclusão de compra.</td>
+                <td>
+                  Segunda conclusão informa ausência de carrinho sem alterar estoque novamente.
+                </td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Regras">
+                <td>CT-44<br />Regras</td>
+                <td>Repetir cancelamento de compra.</td>
+                <td>
+                  Segundo cancelamento informa ausência de carrinho sem repor estoque novamente.
+                </td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/regras-do-carrinho.spec.ts"
+                    >regras-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-45<br />Usuários</td>
+                <td>Cadastrar usuário com e-mail inválido.</td>
+                <td>HTTP 400; usuário não é cadastrado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-46<br />Usuários</td>
+                <td>Cadastrar usuário sem nome.</td>
+                <td>HTTP 400; usuário não é cadastrado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-47<br />Usuários</td>
+                <td>Cadastrar usuário sem senha.</td>
+                <td>HTTP 400; usuário não é cadastrado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-48<br />Usuários</td>
+                <td>Cadastrar usuário sem perfil de administrador.</td>
+                <td>HTTP 400; usuário não é cadastrado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-49<br />Usuários</td>
+                <td>Cadastrar produto com preço negativo.</td>
+                <td>HTTP 400; produto não é cadastrado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-50<br />Usuários</td>
+                <td>Cadastrar produto com quantidade negativa.</td>
+                <td>HTTP 400; produto não é cadastrado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-51<br />Usuários</td>
+                <td>Atualizar produto com preço negativo.</td>
+                <td>HTTP 400; produto permanece inalterado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-52<br />Usuários</td>
+                <td>Atualizar produto com quantidade negativa.</td>
+                <td>HTTP 400; produto permanece inalterado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-53<br />Usuários</td>
+                <td>Usuário comum tenta alterar produto.</td>
+                <td>HTTP 403; produto permanece inalterado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-54<br />Usuários</td>
+                <td>Usuário comum tenta excluir produto.</td>
+                <td>HTTP 403; produto permanece disponível.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Integridade">
+                <td>CT-55<br />Integridade</td>
+                <td>Dois clientes disputam simultaneamente a última unidade (opt-in).</td>
+                <td>
+                  Uma compra deve ser aceita e outra rejeitada; estoque não pode ser vendido duas
+                  vezes.
+                </td>
+                <td>
+                  <span class="tag">@regression</span><br /><a
+                    href="tests/integridade-do-carrinho.spec.ts"
+                    >integridade-do-carrinho.spec.ts</a
+                  >
+                </td>
+              </tr>
+              <tr data-grupo="Usuários">
+                <td>CT-56<br />Usuários</td>
+                <td>Cadastrar usuário sem e-mail.</td>
+                <td>HTTP 400; usuário não é cadastrado.</td>
+                <td>
+                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
+                    >usuarios.spec.ts</a
+                  >
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="analise">
+        <h2>Análise e oportunidades</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Pontos fortes</h3>
+            <ul>
+              <li>Responsabilidades separadas: cliente, tipos, dados, fixtures e verificações.</li>
+              <li>
+                Massa única por execução e limpeza ordenada; falhas persistentes de limpeza são
+                registradas.
+              </li>
+              <li>
+                Validação de estado após ações, incluindo estoque e isolamento entre clientes.
+              </li>
+              <li>
+                CI prevê instância local isolada por job e investigação de cenários críticos sem
+                retry.
+              </li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Candidatos para ampliar</h3>
+            <ul>
+              <li>Ampliar os valores-limite e formatos de campos de entrada.</li>
+              <li>Verificar tokens expirados e autorização de outras operações protegidas.</li>
+              <li>
+                Investigar a corrida observada na ServeRest local durante compras concorrentes.
+              </li>
+            </ul>
+            <p class="muted">
+              São oportunidades identificadas na suíte, não requisitos confirmados nem casos já
+              implementados.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Limites e riscos</h3>
+            <ul>
+              <li>
+                O serviço público compartilhado pode sofrer reset, 429 ou interrupções em execuções
+                locais.
+              </li>
+              <li>
+                A cobertura de operações não mede caminhos internos do servidor, que não está neste
+                repositório.
+              </li>
+              <li>
+                O teste simultâneo é opt-in e pode não provocar a corrida em toda execução; não roda
+                na CI padrão.
+              </li>
+              <li>
+                Como a limpeza não altera o resultado do teste, seus avisos devem ser acompanhados
+                no relatório.
+              </li>
+            </ul>
+          </article>
+        </div>
+        <h3>Execução e fontes</h3>
+        <p>
+          <code>npm test</code> executa a suíte; <code>npm run test:smoke</code>,
+          <code>npm run test:critical</code> e <code>npm run test:regression</code> filtram por tag.
+          Localmente a URL padrão é <code>https://serverest.dev</code>;
+          <code>BASE_URL</code> permite usar outro ambiente. Consulte o
+          <a href="README.md">README</a> e a
+          <a href=".github/workflows/testes-api.yml">pipeline</a> para detalhes.
+        </p>
+        <p class="muted">
+          Fontes: arquivos de <code>tests/</code>, cliente e fixtures em <code>src/</code>,
+          configuração Playwright, pipeline e descoberta com
+          <code>npx playwright test --list</code>. Este documento é uma fotografia manual; execute
+          novamente a descoberta após mudanças na suíte.
+        </p>
+      </section>
+      <footer>Inventário de testes · ServeRest API · 24/11/2026</footer>
+    </main>
+    <script>
+      const rows = [...document.querySelectorAll('#casos tbody tr')];
+      const busca = document.querySelector('#busca');
+      const grupo = document.querySelector('#grupo');
+      const tag = document.querySelector('#tag');
+      const contador = document.querySelector('#contador');
+      function filtrar() {
+        const termo = busca.value.trim().toLocaleLowerCase('pt-BR');
+        let visiveis = 0;
+        for (const row of rows) {
+          const texto = row.textContent.toLocaleLowerCase('pt-BR');
+          const match =
+            texto.includes(termo) &&
+            (!grupo.value || row.dataset.grupo === grupo.value) &&
+            (!tag.value ||
+              [...row.querySelectorAll('.tag')].some((item) => item.textContent === tag.value));
+          row.hidden = !match;
+          if (match) visiveis++;
+        }
+        contador.textContent = `${visiveis} de ${rows.length} casos listados`;
+      }
+      busca.addEventListener('input', filtrar);
+      grupo.addEventListener('change', filtrar);
+      tag.addEventListener('change', filtrar);
+    </script>
+  </body>
+</html>

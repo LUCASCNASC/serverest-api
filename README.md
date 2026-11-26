@@ -77,7 +77,7 @@ Cada teste tem uma ou mais categorias:
 
 | Tag                | O que é                                                                      | Testes                                                      |
 | ------------------ | ---------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `@regression`      | A suíte completa. **Todo teste tem esta tag.**                               | Todos (38)                                                  |
+| `@regression`      | A suíte completa. **Todo teste tem esta tag.**                               | Todos (56; um opt-in)                                       |
 | `@critical`        | Caminhos de maior risco, repetidos na investigação semanal de flakiness      | Fluxo de compra e ciclo de vida do carrinho (4)             |
 | `@smoke`           | Responde rápido à pergunta "o essencial do negócio está funcionando?"        | Smoke tests centralizados por recurso em `tests/smoke/` (5) |
 | `@desafio-tecnico` | O fluxo obrigatório pedido no desafio: usuário → login → produtos → carrinho | Fluxo de compra: concluir e cancelar (2)                    |
@@ -138,6 +138,24 @@ $env:BASE_URL="http://localhost:3000"; npm test
 
 A ServeRest local é útil quando o ambiente público estiver fora do ar, lento ou recusando requisições.
 
+O teste de concorrência da última unidade fica desativado por padrão: uma sondagem local com a
+ServeRest 3.2.2 aceitou duas compras simultâneas para uma única unidade. Execute-o somente em
+uma instância local isolada e descartável, depois de iniciá-la em `http://127.0.0.1:3000`:
+
+```powershell
+$env:BASE_URL="http://127.0.0.1:3000"; $env:TESTAR_CONCORRENCIA="1"
+npx playwright test tests/integridade-do-carrinho.spec.ts --grep "última unidade" --retries=0
+Remove-Item Env:TESTAR_CONCORRENCIA
+```
+
+```bash
+BASE_URL=http://127.0.0.1:3000 TESTAR_CONCORRENCIA=1 npx playwright test tests/integridade-do-carrinho.spec.ts --grep "última unidade" --retries=0
+```
+
+O teste usa requisições HTTP concorrentes via `fetch` e verifica que só uma compra seja aceita.
+Não há garantia de que uma única execução provoque a corrida; uma falha expõe um possível defeito
+do serviço testado. Esse cenário não roda na CI padrão.
+
 ### Problemas comuns
 
 | Sintoma                                 | Causa provável                                     | O que fazer                                                                                                    |
@@ -159,15 +177,15 @@ Lint e tipos ──► Smoke (PR) ──► Regressão em 2 shards
 Agendada: regressão completa ou flaky hunt
 ```
 
-| Job                            | Gatilho                        | O que faz                                                                                                                                                                     |
-| ------------------------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Disponibilidade da API**     | Todos                          | Verifica `/usuarios`, `/produtos` e `/carrinhos` no serviço público; é informativa e não bloqueia a suíte isolada.                                                            |
-| **Lint e tipos**               | Todos                          | Executa `npm run verificar` e bloqueia a validação quando tipos, lint ou formatação falham.                                                                                   |
-| **Smoke**                      | Pull Request e execução manual | Executa `@smoke` com 1 worker na instância local efêmera.                                                                                                                     |
-| **Regressão**                  | Pull Request e push em `main`  | Executa `@critical` + `@regression` em 2 shards independentes, cada um com sua instância local e 1 worker. Como todos os testes pertencem a `@regression`, a suíte é coberta. |
-| **Regressão completa noturna** | Segunda a sexta                | Executa toda a suíte na instância local. Não há matriz de navegadores porque o projeto testa somente API HTTP.                                                                |
-| **Investigação de flakiness**  | Domingo e execução manual      | Repete os cenários `@critical` 10 vezes, em sequência e sem retry, na instância local isolada.                                                                                |
-| **Consolidar resultados**      | Após os jobs                   | Mescla os relatórios Playwright, publica o HTML por 14 dias, escreve um resumo e atualiza um comentário no PR quando o token tem permissão (PRs do próprio repositório).      |
+| Job                            | Gatilho                        | O que faz                                                                                                                                                                |
+| ------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Disponibilidade da API**     | Todos                          | Verifica `/usuarios`, `/produtos` e `/carrinhos` no serviço público; é informativa e não bloqueia a suíte isolada.                                                       |
+| **Lint e tipos**               | Todos                          | Executa `npm run verificar` e bloqueia a validação quando tipos, lint ou formatação falham.                                                                              |
+| **Smoke**                      | Pull Request e execução manual | Executa `@smoke` com 1 worker na instância local efêmera.                                                                                                                |
+| **Regressão**                  | Pull Request e push em `main`  | Executa `@critical` + `@regression` em 2 shards independentes; o caso de concorrência opt-in é ignorado por padrão.                                                      |
+| **Regressão completa noturna** | Segunda a sexta                | Executa toda a suíte na instância local. Não há matriz de navegadores porque o projeto testa somente API HTTP.                                                           |
+| **Investigação de flakiness**  | Domingo e execução manual      | Repete os cenários `@critical` 10 vezes, em sequência e sem retry, na instância local isolada.                                                                           |
+| **Consolidar resultados**      | Após os jobs                   | Mescla os relatórios Playwright, publica o HTML por 14 dias, escreve um resumo e atualiza um comentário no PR quando o token tem permissão (PRs do próprio repositório). |
 
 **Quando roda:**
 
@@ -233,7 +251,9 @@ Decisões que vale explicar:
 
 ## Cenários automatizados
 
-São 38 testes. Todos têm a tag `@regression`. A tag `@critical` seleciona um subconjunto para repetição semanal; as outras tags aparecem na coluna ao lado.
+São 56 testes descobertos, incluindo um cenário de concorrência opt-in que é ignorado por padrão.
+Todos têm a tag `@regression`. A tag `@critical` seleciona um subconjunto para repetição semanal;
+as outras tags aparecem na coluna ao lado. Veja também o [inventário de testes](inventario-testes.html).
 
 **Smoke tests por recurso** (`tests/smoke/`)
 
@@ -261,9 +281,12 @@ São 38 testes. Todos têm a tag `@regression`. A tag `@critical` seleciona um s
 | Não permite carrinho com produto inexistente                                               |
 | Não baixa parcialmente o estoque quando um item do carrinho é inválido ou está sem estoque |
 | Não cria carrinho sem token de autenticação                                                |
+| Não cria carrinho com token malformado, adulterado ou de usuário excluído                  |
+| Não cria carrinho com lista vazia de produtos                                              |
 | Não permite cancelar carrinho sem token; o carrinho e o estoque permanecem inalterados     |
 | Concluir compra sem carrinho responde 200, mas com mensagem diferente                      |
 | Cancelar compra sem carrinho responde 200, mas com mensagem diferente                      |
+| Repetir conclusão ou cancelamento não altera o estoque novamente                           |
 | Não aceita carrinho com quantidade 0                                                       |
 | Não aceita carrinho com quantidade -5                                                      |
 | Permite uma nova compra depois de concluir a anterior                                      |
@@ -275,6 +298,7 @@ São 38 testes. Todos têm a tag `@regression`. A tag `@critical` seleciona um s
 | -------------------------------------------------------------------------------------------------------------------- |
 | Concluir a compra de um cliente não afeta o carrinho de outro                                                        |
 | O estoque reservado por um cliente só volta para venda quando ele cancela (inclui comprar exatamente todo o estoque) |
+| Dois clientes disputam simultaneamente a última unidade (opt-in; ServeRest local isolada)                            |
 | Não exclui produto que faz parte de um carrinho                                                                      |
 | Não exclui usuário que tem carrinho                                                                                  |
 | O carrinho mantém o preço do momento da compra quando o produto muda de preço                                        |
@@ -288,12 +312,15 @@ São 38 testes. Todos têm a tag `@regression`. A tag `@critical` seleciona um s
 | Cadastra o usuário comum e persiste os dados enviados                     |             |
 | Usuário comum faz login e recebe um token do próprio usuário              |             |
 | Não cadastra usuário com e-mail já utilizado                              |             |
+| Não cadastra usuário com e-mail inválido ou campos obrigatórios ausentes  |             |
 | Não faz login com senha errada                                            |             |
 | Após editar o e-mail, rejeita o antigo e permite login com o novo         |             |
 | Administrador cadastra produto, e o produto fica disponível para consulta |             |
 | Não cadastra produto com nome já utilizado                                |             |
 | Não atualiza produto para um nome já utilizado e preserva seus dados      |             |
+| Não cadastra ou atualiza produto com preço ou quantidade negativos        |             |
 | Usuário comum não pode cadastrar produto (403)                            |             |
+| Usuário comum não pode alterar ou excluir produto (403)                   |             |
 | Usuário comum compra produtos cadastrados por um administrador            |             |
 
 ## Análise de qualidade
@@ -348,7 +375,7 @@ O critério foi priorizar o que, se quebrar, causa prejuízo ao negócio ou ao c
 - **As regras e os limites que protegem o estoque e o dinheiro:** um carrinho por usuário, estoque insuficiente, quantidade zero ou negativa, produto e usuário que não podem ser excluídos, preço congelado no carrinho.
 - **A interação entre dois clientes e entre os dois perfis**, porque é onde aparecem os erros de "dado de uma pessoa afetando outra".
 
-A lista completa dos 38 testes está em [Cenários automatizados](#cenários-automatizados).
+A lista dos cenários está em [Cenários automatizados](#cenários-automatizados).
 
 ### O que decidi não testar (e por quê)
 
@@ -356,17 +383,14 @@ A lista completa dos 38 testes está em [Cenários automatizados](#cenários-aut
 | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | CRUD completo de usuários e produtos (editar usuário, listagens com filtros, exclusão com sucesso) | O objetivo é a integração do fluxo de compra. De usuários e produtos, testei o que o fluxo usa ou o que afeta o carrinho: cadastro, login, permissões, alteração de preço e exclusões bloqueadas. O restante seriam suítes próprias. |
 | Expiração real do token                                                                            | Exigiria esperar 10 minutos a cada execução. O custo é alto para pouco ganho, e o caso "sem token" já cobre a rejeição.                                                                                                              |
-| Concorrência real (dois clientes disputando a última unidade _no mesmo instante_)                  | A versão sequencial está coberta. A simultânea não é determinística em ambiente público e compartilhado. Eu levaria esse teste para um ambiente controlado (ServeRest local).                                                        |
 | Carga e performance                                                                                | Gerar carga num serviço público e gratuito prejudica outras pessoas e não daria medições confiáveis.                                                                                                                                 |
 | Validação formal de schema (JSON Schema)                                                           | As comparações de corpo inteiro com `toEqual` já pegam campo faltando, sobrando ou com valor errado nos pontos críticos. Uma biblioteca de schema traria mais complexidade do que valor para este escopo.                            |
-| Segurança aprofundada (injeção, força bruta, varredura de vulnerabilidades)                        | Foge do escopo funcional do desafio. Os achados de exposição de dados estão registrados nos riscos, e os casos de token adulterado estão em "Próximos passos".                                                                       |
+| Segurança aprofundada (injeção, força bruta, varredura de vulnerabilidades)                        | Foge do escopo funcional do desafio. Os achados de exposição de dados estão registrados nos riscos.                                                                                                                                  |
 
 ### Próximos passos
 
-Mapeados, mas ainda não automatizados, em ordem de prioridade:
-
-1. **Segurança da sessão:** token adulterado ou malformado, e token de um usuário que já foi excluído (os dois devem ser recusados com 401).
-2. **Validação de entrada:** e-mail em formato inválido, campos obrigatórios faltando, preço ou quantidade negativos no cadastro de produto e carrinho com lista vazia. São bons candidatos a testes parametrizados.
+Investigar a condição de corrida observada na instância local e avaliar outras validações de
+entrada e autorização conforme o contrato e os riscos do produto.
 
 ## Desafio de investigação
 
@@ -413,7 +437,7 @@ Depois de achar a causa, eu garantiria que o problema não volta:
 
 ## Evidências
 
-A pasta [`evidencias/`](evidencias/) contém evidências arquivadas de uma execução anterior contra `https://serverest.dev` (**26 testes, 26 passando, 0 flaky**). A suíte atual tem 38 testes; o relatório atualizado é publicado como artefato pela pipeline.
+A pasta [`evidencias/`](evidencias/) contém evidências arquivadas de uma execução anterior contra `https://serverest.dev` (**26 testes, 26 passando, 0 flaky**). A suíte atual tem 56 testes descobertos, incluindo um opt-in; o relatório atualizado é publicado como artefato pela pipeline.
 
 | Arquivo                                                                         | O que é                                                                                                    |
 | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |

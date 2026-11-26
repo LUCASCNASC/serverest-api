@@ -2,6 +2,13 @@ import { test, expect } from '../src/fixtures';
 import { MENSAGENS } from '../src/dados/mensagens';
 import { conferirEstoque } from '../src/verificacoes';
 
+if (process.env.TESTAR_CONCORRENCIA === '1') {
+  const baseURL = new URL(process.env.BASE_URL ?? 'https://serverest.dev');
+  if (!['localhost', '127.0.0.1', '[::1]'].includes(baseURL.hostname)) {
+    throw new Error('TESTAR_CONCORRENCIA exige BASE_URL de uma ServeRest local isolada');
+  }
+}
+
 /**
  * O carrinho se liga a outros dados: ao cliente dono dele e aos produtos que
  * contém. Esta suíte garante que essas ligações não se quebram:
@@ -97,6 +104,58 @@ test.describe('Integridade entre clientes', { tag: '@regression' }, () => {
       const resposta = await api.carrinhos.cadastrar(umaUnidade, outroClienteLogado.token);
       expect(resposta.status()).toBe(201);
     });
+  });
+});
+
+test.describe('Concorrência de estoque', { tag: '@regression' }, () => {
+  test.skip(
+    process.env.TESTAR_CONCORRENCIA !== '1',
+    'Cenário opt-in: há uma condição de corrida conhecida na ServeRest 3.2.2.',
+  );
+
+  test('não deve vender a última unidade para dois clientes simultaneamente', async ({
+    api,
+    adminComProdutos,
+    clienteLogado,
+    outroClienteLogado,
+  }, testInfo) => {
+    const baseURL = new URL(testInfo.project.use.baseURL ?? 'https://serverest.dev');
+    expect(['localhost', '127.0.0.1', '[::1]'], 'use uma ServeRest local isolada').toContain(
+      baseURL.hostname,
+    );
+    const [produto] = adminComProdutos.produtos;
+    const { _id, ...dados } = produto;
+    const atualizacao = await api.produtos.editar(
+      _id,
+      { ...dados, quantidade: 1 },
+      adminComProdutos.token,
+    );
+    expect(atualizacao.status()).toBe(200);
+    await conferirEstoque(api, produto, 1);
+
+    const itens = [{ idProduto: _id, quantidade: 1 }];
+    const criarCarrinho = (token: string) =>
+      fetch(new URL('/carrinhos', baseURL), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: token },
+        body: JSON.stringify({ produtos: itens }),
+      });
+    const respostas = await Promise.all(
+      [clienteLogado.token, outroClienteLogado.token].map(criarCarrinho),
+    );
+
+    expect(respostas.map((resposta) => resposta.status).sort()).toEqual([201, 400]);
+    const rejeitada = respostas.find((resposta) => resposta.status === 400);
+    if (!rejeitada) throw new Error('Nenhuma compra foi rejeitada por falta de estoque');
+    expect(await rejeitada.json()).toMatchObject({ message: MENSAGENS.estoqueInsuficiente });
+    const listas = await Promise.all([
+      api.carrinhos.listarDoUsuario(clienteLogado.idUsuario),
+      api.carrinhos.listarDoUsuario(outroClienteLogado.idUsuario),
+    ]);
+    expect(listas.map((lista) => lista.status())).toEqual([200, 200]);
+    const carrinhos = await Promise.all(listas.map((lista) => lista.json()));
+    expect(carrinhos.map((lista) => lista.quantidade).sort()).toEqual([0, 1]);
+    await conferirEstoque(api, produto, 0);
   });
 });
 

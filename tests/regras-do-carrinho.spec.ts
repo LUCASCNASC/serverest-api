@@ -1,6 +1,7 @@
 import { test, expect } from '../src/fixtures';
 import { MENSAGENS } from '../src/dados/mensagens';
 import { conferirEstoque } from '../src/verificacoes';
+import { novoUsuarioComum } from '../src/dados/fabrica';
 
 /**
  * Regras de negócio do carrinho que, se quebrarem, geram prejuízo real:
@@ -10,6 +11,85 @@ import { conferirEstoque } from '../src/verificacoes';
  * cadastrados (10 unidades cada), criados na hora para este teste.
  */
 test.describe('Regras do carrinho', { tag: '@regression' }, () => {
+  for (const tipo of ['malformado', 'adulterado'] as const) {
+    test(`não deve criar carrinho com token ${tipo}`, async ({
+      api,
+      adminComProdutos,
+      clienteLogado,
+    }) => {
+      const [produto] = adminComProdutos.produtos;
+      const partes = clienteLogado.token.split('.');
+      const token =
+        tipo === 'malformado'
+          ? 'Bearer token-invalido'
+          : `${partes[0]}.${partes[1]}.${partes[2][0] === 'A' ? 'B' : 'A'}${partes[2].slice(1)}`;
+
+      const resposta = await api.carrinhos.cadastrar(
+        [{ idProduto: produto._id, quantidade: 1 }],
+        token,
+      );
+      expect(resposta.status()).toBe(401);
+      expect(await resposta.json()).toEqual({ message: MENSAGENS.tokenInvalido });
+      const carrinhos = await api.carrinhos.listarDoUsuario(clienteLogado.idUsuario);
+      expect(carrinhos.status()).toBe(200);
+      expect(await carrinhos.json()).toEqual({ quantidade: 0, carrinhos: [] });
+      await conferirEstoque(api, produto, produto.quantidade);
+    });
+  }
+
+  test('não deve criar carrinho com token de usuário excluído', async ({
+    api,
+    massa,
+    adminComProdutos,
+  }) => {
+    const usuario = novoUsuarioComum();
+    const cadastro = await api.usuarios.cadastrar(usuario);
+    expect(cadastro.status()).toBe(201);
+    const { _id } = await cadastro.json();
+    massa.guardarUsuario(_id);
+    const login = await api.login.entrar(usuario.email, usuario.password);
+    expect(login.status()).toBe(200);
+    const { authorization } = await login.json();
+    const exclusao = await api.usuarios.excluir(_id);
+    expect(exclusao.status()).toBe(200);
+    expect(await exclusao.json()).toEqual({ message: MENSAGENS.registroExcluido });
+
+    const [produto] = adminComProdutos.produtos;
+    const resposta = await api.carrinhos.cadastrar(
+      [{ idProduto: produto._id, quantidade: 1 }],
+      authorization,
+    );
+    if (resposta.status() === 201) {
+      const limpeza = await api.carrinhos.cancelarCompra(authorization);
+      expect(limpeza.status(), 'limpeza de carrinho criado com token de usuário excluído').toBe(
+        200,
+      );
+    }
+    expect(resposta.status()).toBe(401);
+    expect(await resposta.json()).toEqual({ message: MENSAGENS.tokenInvalido });
+    const carrinhos = await api.carrinhos.listarDoUsuario(_id);
+    expect(carrinhos.status()).toBe(200);
+    expect(await carrinhos.json()).toEqual({ quantidade: 0, carrinhos: [] });
+    await conferirEstoque(api, produto, produto.quantidade);
+  });
+
+  test('não deve criar carrinho com lista vazia de produtos', async ({
+    api,
+    adminComProdutos,
+    clienteLogado,
+  }) => {
+    const resposta = await api.carrinhos.cadastrar([], clienteLogado.token);
+
+    expect(resposta.status()).toBe(400);
+    expect(await resposta.json()).toMatchObject({ produtos: expect.any(String) });
+    const carrinhos = await api.carrinhos.listarDoUsuario(clienteLogado.idUsuario);
+    expect(carrinhos.status()).toBe(200);
+    expect(await carrinhos.json()).toEqual({ quantidade: 0, carrinhos: [] });
+    for (const produto of adminComProdutos.produtos) {
+      await conferirEstoque(api, produto, produto.quantidade);
+    }
+  });
+
   test('não deve permitir mais de um carrinho por usuário', async ({ api, adminComProdutos }) => {
     const [produtoA, produtoB] = adminComProdutos.produtos;
 
@@ -198,6 +278,42 @@ test.describe('Limites do estoque', { tag: '@regression' }, () => {
 
   // O valor limite superior (comprar exatamente todo o estoque) é coberto no
   // primeiro passo do teste de disputa de estoque, em integridade-do-carrinho.
+});
+
+test.describe('Repetição de encerramento do carrinho', { tag: '@regression' }, () => {
+  for (const operacao of ['concluir', 'cancelar'] as const) {
+    test(`repetir ${operacao} compra não altera o estoque novamente`, async ({
+      api,
+      adminComProdutos,
+      clienteLogado,
+    }) => {
+      const [produto] = adminComProdutos.produtos;
+      const carrinho = await api.carrinhos.cadastrar(
+        [{ idProduto: produto._id, quantidade: 2 }],
+        clienteLogado.token,
+      );
+      expect(carrinho.status()).toBe(201);
+      const { _id } = await carrinho.json();
+      const encerrar = () =>
+        operacao === 'concluir'
+          ? api.carrinhos.concluirCompra(clienteLogado.token)
+          : api.carrinhos.cancelarCompra(clienteLogado.token);
+      const primeira = await encerrar();
+      expect(primeira.status()).toBe(200);
+      expect(await primeira.json()).toEqual({
+        message: operacao === 'concluir' ? MENSAGENS.registroExcluido : MENSAGENS.compraCancelada,
+      });
+      const estoqueEsperado = operacao === 'concluir' ? produto.quantidade - 2 : produto.quantidade;
+      await conferirEstoque(api, produto, estoqueEsperado);
+
+      const segunda = await encerrar();
+      expect(segunda.status()).toBe(200);
+      expect(await segunda.json()).toEqual({ message: MENSAGENS.usuarioSemCarrinho });
+      const consulta = await api.carrinhos.buscarPorId(_id);
+      expect(consulta.status()).toBe(400);
+      await conferirEstoque(api, produto, estoqueEsperado);
+    });
+  }
 });
 
 test.describe('Ciclo de vida do carrinho', { tag: ['@regression', '@critical'] }, () => {

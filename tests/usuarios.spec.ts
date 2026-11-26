@@ -2,6 +2,7 @@ import { test, expect } from '../src/fixtures';
 import { novoProduto, novoUsuarioAdministrador, novoUsuarioComum } from '../src/dados/fabrica';
 import { MENSAGENS } from '../src/dados/mensagens';
 import { lerConteudoDoJwt } from '../src/verificacoes';
+import type { Usuario } from '../src/tipos';
 
 /**
  * A ServeRest tem dois perfis de usuário:
@@ -75,6 +76,43 @@ for (const perfil of PERFIS) {
 }
 
 test.describe('Regras de cadastro e login', { tag: '@regression' }, () => {
+  test('não deve cadastrar usuário com e-mail inválido', async ({ api, massa }) => {
+    const usuario = { ...novoUsuarioComum(), email: 'email-invalido' };
+    const resposta = await api.usuarios.cadastrar(usuario);
+    if (resposta.status() === 201) massa.guardarUsuario((await resposta.json())._id);
+
+    expect(resposta.status()).toBe(400);
+    expect(await resposta.json()).toMatchObject({ email: expect.any(String) });
+    const lista = await api.usuarios.listar();
+    expect(lista.status()).toBe(200);
+    expect((await lista.json()).usuarios.some((item) => item.email === usuario.email)).toBe(false);
+  });
+
+  for (const campo of ['nome', 'email', 'password', 'administrador'] as const) {
+    test(`não deve cadastrar usuário sem ${campo}`, async ({ request, api, massa }) => {
+      const usuario = novoUsuarioComum();
+      const invalido: Partial<Usuario> = { ...usuario };
+      delete invalido[campo];
+      const resposta = await request.post('/usuarios', { data: invalido });
+      if (resposta.status() === 201) {
+        const corpo: unknown = await resposta.json();
+        if (typeof corpo !== 'object' || corpo === null || !('_id' in corpo)) {
+          throw new Error('Cadastro inesperado sem ID para limpeza');
+        }
+        if (typeof corpo._id !== 'string') throw new Error('ID inválido para limpeza');
+        massa.guardarUsuario(corpo._id);
+      }
+
+      expect(resposta.status()).toBe(400);
+      expect(await resposta.json()).toMatchObject({ [campo]: expect.any(String) });
+      const lista = await api.usuarios.listar();
+      expect(lista.status()).toBe(200);
+      expect((await lista.json()).usuarios.some((item) => item.email === usuario.email)).toBe(
+        false,
+      );
+    });
+  }
+
   test('não deve cadastrar usuário com e-mail já utilizado', async ({ api, clienteLogado }) => {
     const outroUsuarioMesmoEmail = { ...novoUsuarioComum(), email: clienteLogado.dados.email };
 
@@ -125,6 +163,42 @@ test.describe('Regras de cadastro e login', { tag: '@regression' }, () => {
 });
 
 test.describe('Permissões do administrador', { tag: '@regression' }, () => {
+  for (const campo of ['preco', 'quantidade'] as const) {
+    test(`não deve cadastrar produto com ${campo} negativo`, async ({
+      api,
+      massa,
+      adminLogado,
+    }) => {
+      const produto = { ...novoProduto(), [campo]: -1 };
+      const resposta = await api.produtos.cadastrar(produto, adminLogado.token);
+      if (resposta.status() === 201) {
+        massa.guardarProduto((await resposta.json())._id, adminLogado.token);
+      }
+
+      expect(resposta.status()).toBe(400);
+      expect(await resposta.json()).toMatchObject({ [campo]: expect.any(String) });
+      const lista = await api.produtos.listar();
+      expect(lista.status()).toBe(200);
+      expect((await lista.json()).produtos.some((item) => item.nome === produto.nome)).toBe(false);
+    });
+
+    test(`não deve atualizar produto com ${campo} negativo`, async ({ api, adminComProdutos }) => {
+      const [produto] = adminComProdutos.produtos;
+      const { _id, ...dados } = produto;
+      const resposta = await api.produtos.editar(
+        _id,
+        { ...dados, [campo]: -1 },
+        adminComProdutos.token,
+      );
+
+      expect(resposta.status()).toBe(400);
+      expect(await resposta.json()).toMatchObject({ [campo]: expect.any(String) });
+      const consulta = await api.produtos.buscarPorId(_id);
+      expect(consulta.status()).toBe(200);
+      expect(await consulta.json()).toEqual(produto);
+    });
+  }
+
   test('deve cadastrar produto e o produto ficar disponível para consulta', async ({
     api,
     massa,
@@ -198,6 +272,41 @@ test.describe('Permissões do usuário comum', { tag: '@regression' }, () => {
 
     expect(resposta.status()).toBe(403);
     expect(await resposta.json()).toEqual({ message: MENSAGENS.rotaDeAdministrador });
+  });
+
+  test('não deve permitir que usuário comum altere produto', async ({
+    api,
+    adminComProdutos,
+    clienteLogado,
+  }) => {
+    const [produto] = adminComProdutos.produtos;
+    const { _id, ...dados } = produto;
+    const resposta = await api.produtos.editar(
+      _id,
+      { ...dados, preco: dados.preco + 1 },
+      clienteLogado.token,
+    );
+
+    expect(resposta.status()).toBe(403);
+    expect(await resposta.json()).toEqual({ message: MENSAGENS.rotaDeAdministrador });
+    const consulta = await api.produtos.buscarPorId(_id);
+    expect(consulta.status()).toBe(200);
+    expect(await consulta.json()).toEqual(produto);
+  });
+
+  test('não deve permitir que usuário comum exclua produto', async ({
+    api,
+    adminComProdutos,
+    clienteLogado,
+  }) => {
+    const [produto] = adminComProdutos.produtos;
+    const resposta = await api.produtos.excluir(produto._id, clienteLogado.token);
+
+    expect(resposta.status()).toBe(403);
+    expect(await resposta.json()).toEqual({ message: MENSAGENS.rotaDeAdministrador });
+    const consulta = await api.produtos.buscarPorId(produto._id);
+    expect(consulta.status()).toBe(200);
+    expect(await consulta.json()).toEqual(produto);
   });
 
   test('deve comprar produtos cadastrados por um administrador', async ({

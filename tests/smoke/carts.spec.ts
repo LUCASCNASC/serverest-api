@@ -16,7 +16,7 @@ test.describe('Smoke: carrinhos', { tag: ['@smoke', '@regression'] }, () => {
     const itens = [{ idProduto: produto._id, quantidade: 2 }];
     const cadastro = await api.carrinhos.cadastrar(itens, clienteLogado.token);
     expect(cadastro.status()).toBe(201);
-    const carrinhoCriado = await cadastro.json();
+    const carrinhoCriado = await cadastro.jsonSucesso();
     expect(carrinhoCriado).toEqual({
       message: MENSAGENS.cadastroComSucesso,
       _id: expect.any(String),
@@ -62,7 +62,7 @@ test.describe('Smoke: carrinhos', { tag: ['@smoke', '@regression'] }, () => {
       clienteLogado.token,
     );
     expect(cadastro.status()).toBe(201);
-    const carrinhoCriado = await cadastro.json();
+    const carrinhoCriado = await cadastro.jsonSucesso();
 
     const conclusao = await api.carrinhos.concluirCompra(clienteLogado.token);
     expect(conclusao.status()).toBe(200);

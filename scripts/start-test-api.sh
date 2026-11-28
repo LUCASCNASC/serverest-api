@@ -6,7 +6,7 @@ set -euo pipefail
 
 log_file="$RUNNER_TEMP/serverest.log"
 
-npx --yes serverest@3.2.2 > "$log_file" 2>&1 &
+npm exec -- serverest --nodoc > "$log_file" 2>&1 &
 
 for tentativa in $(seq 1 30); do
   status=$(curl --silent --output /dev/null --write-out '%{http_code}' \

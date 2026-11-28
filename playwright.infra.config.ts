@@ -1,0 +1,7 @@
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests-infra',
+  retries: 0,
+  reporter: 'list',
+});

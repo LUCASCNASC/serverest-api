@@ -40,7 +40,7 @@ test.describe('Integridade entre clientes', { tag: '@regression' }, () => {
         outroClienteLogado.token,
       );
       expect(doOutro.status()).toBe(201);
-      idCarrinhoDoOutro = (await doOutro.json())._id;
+      idCarrinhoDoOutro = (await doOutro.jsonSucesso())._id;
     });
 
     await test.step('O primeiro cliente conclui a compra', async () => {
@@ -153,7 +153,7 @@ test.describe('Concorrência de estoque', { tag: '@regression' }, () => {
       api.carrinhos.listarDoUsuario(outroClienteLogado.idUsuario),
     ]);
     expect(listas.map((lista) => lista.status())).toEqual([200, 200]);
-    const carrinhos = await Promise.all(listas.map((lista) => lista.json()));
+    const carrinhos = await Promise.all(listas.map((lista) => lista.jsonSucesso()));
     expect(carrinhos.map((lista) => lista.quantidade).sort()).toEqual([0, 1]);
     await conferirEstoque(api, produto, 0);
   });
@@ -172,7 +172,7 @@ test.describe('Integridade dos dados vinculados ao carrinho', { tag: '@regressio
       clienteLogado.token,
     );
     expect(carrinho.status()).toBe(201);
-    const { _id: idCarrinho } = await carrinho.json();
+    const { _id: idCarrinho } = await carrinho.jsonSucesso();
 
     const resposta = await api.produtos.excluir(produto._id, adminComProdutos.token);
 
@@ -197,7 +197,7 @@ test.describe('Integridade dos dados vinculados ao carrinho', { tag: '@regressio
       clienteLogado.token,
     );
     expect(carrinho.status()).toBe(201);
-    const { _id: idCarrinho } = await carrinho.json();
+    const { _id: idCarrinho } = await carrinho.jsonSucesso();
 
     const resposta = await api.usuarios.excluir(clienteLogado.idUsuario);
 
@@ -226,7 +226,7 @@ test.describe('Integridade dos dados vinculados ao carrinho', { tag: '@regressio
         clienteLogado.token,
       );
       expect(resposta.status()).toBe(201);
-      idCarrinho = (await resposta.json())._id;
+      idCarrinho = (await resposta.jsonSucesso())._id;
     });
 
     await test.step('Administrador aumenta o preço do produto', async () => {

@@ -53,7 +53,7 @@ Como os testes são só de API, **não é preciso** rodar `npx playwright instal
 ### 3. Confirme que está tudo funcionando
 
 ```bash
-npm run verificar   # tipos, lint e formatação: não deve mostrar nenhum erro
+npm run verificar   # tipos, lint, formatação, infraestrutura e inventário
 npm test            # todos os testes devem passar
 ```
 
@@ -103,10 +103,12 @@ npm run report                                   # abre o relatório HTML da úl
 **Qualidade do código**
 
 ```bash
-npm run verificar         # roda os três abaixo de uma vez (use antes de abrir um Pull Request)
+npm run verificar         # executa todas as verificações abaixo
 npm run typecheck         # checagem de tipos do TypeScript
 npm run lint              # ESLint: boas práticas de TypeScript e de Playwright
 npm run format:check      # confere se o código segue a formatação padrão (Prettier)
+npm run test:infra        # testa limpeza, diagnóstico e respostas HTTP sem API externa
+npm run inventario:check  # confere títulos, arquivos e tags do inventário com o Playwright
 
 npm run lint:fix          # corrige automaticamente o que o lint souber corrigir
 npm run format            # formata todos os arquivos
@@ -124,7 +126,7 @@ Assim dá para ver exatamente o que a API respondeu, sem precisar rodar o teste 
 
 ### Rodando contra outro ambiente
 
-Por padrão os testes apontam para `https://serverest.dev`. Para usar outro endereço (por exemplo, a ServeRest rodando na sua máquina com `npx serverest@latest`, que sobe em `http://localhost:3000`), defina a variável `BASE_URL`:
+Por padrão os testes apontam para `https://serverest.dev`. Para usar outro endereço, inicie, por exemplo, a versão da ServeRest fixada no lockfile com `npm exec -- serverest --nodoc` e defina a variável `BASE_URL`:
 
 ```bash
 # Linux / macOS / Git Bash
@@ -154,7 +156,8 @@ BASE_URL=http://127.0.0.1:3000 TESTAR_CONCORRENCIA=1 npx playwright test tests/i
 
 O teste usa requisições HTTP concorrentes via `fetch` e verifica que só uma compra seja aceita.
 Não há garantia de que uma única execução provoque a corrida; uma falha expõe um possível defeito
-do serviço testado. Esse cenário não roda na CI padrão.
+do serviço testado. Esse cenário não roda nos checks de PR: é monitorado em job informativo
+semanal ou manual, com 10 repetições, e seu resultado real aparece no resumo e no relatório.
 
 ### Problemas comuns
 
@@ -174,7 +177,7 @@ A pipeline fica em [`.github/workflows/testes-api.yml`](.github/workflows/testes
 Disponibilidade pública (informativa)
 Lint e tipos ──► Smoke (PR) ──► Regressão em 2 shards
                          └────► Relatório consolidado
-Agendada: regressão completa ou flaky hunt
+Agendada: regressão completa ou flaky hunt + monitoramento de concorrência
 ```
 
 | Job                            | Gatilho                        | O que faz                                                                                                                                                                |
@@ -185,6 +188,7 @@ Agendada: regressão completa ou flaky hunt
 | **Regressão**                  | Pull Request e push em `main`  | Executa `@critical` + `@regression` em 2 shards independentes; o caso de concorrência opt-in é ignorado por padrão.                                                      |
 | **Regressão completa noturna** | Segunda a sexta                | Executa toda a suíte na instância local. Não há matriz de navegadores porque o projeto testa somente API HTTP.                                                           |
 | **Investigação de flakiness**  | Domingo e execução manual      | Repete os cenários `@critical` 10 vezes, em sequência e sem retry, na instância local isolada.                                                                           |
+| **Concorrência**               | Domingo e execução manual      | Repete a disputa pela última unidade 10 vezes em instância isolada; o resultado é informativo e fica visível no resumo.                                                  |
 | **Consolidar resultados**      | Após os jobs                   | Mescla os relatórios Playwright, publica o HTML por 14 dias, escreve um resumo e atualiza um comentário no PR quando o token tem permissão (PRs do próprio repositório). |
 
 **Quando roda:**
@@ -194,8 +198,8 @@ Agendada: regressão completa ou flaky hunt
 | Pull Request                                                        | Lint/tipos, smoke e regressão em shards (smoke termina antes dos shards para reduzir carga). |
 | Push em `main`                                                      | Lint/tipos e regressão em shards.                                                            |
 | Segunda a sexta, às 9h (Brasília)                                   | Regressão completa noturna.                                                                  |
-| Domingo, às 10h (Brasília)                                          | `@critical` repetidos 10 vezes para investigar flakiness.                                    |
-| Manual, pela aba **Actions** → **Testes de API** → **Run workflow** | Escolha `regression`, `smoke`, `desafio-tecnico` ou `flaky-hunt`.                            |
+| Domingo, às 10h (Brasília)                                          | `@critical` repetidos 10 vezes e monitoramento isolado da concorrência.                      |
+| Manual, pela aba **Actions** → **Testes de API** → **Run workflow** | Escolha `regression`, `smoke`, `desafio-tecnico`, `flaky-hunt` ou `concorrencia`.            |
 
 **Por que 2 shards com 1 worker:** dividem a regressão sem aumentar a concorrência total de testes em relação aos 2 workers anteriores. Os shards só iniciam depois do smoke no PR e cada job usa sua própria instância local.
 
@@ -217,9 +221,11 @@ src/
   tipos.ts              → formatos dos dados enviados e das respostas da API
 tests/
   fluxo-de-compra.spec.ts         → fluxo do desafio e cenários críticos (@desafio-tecnico, @regression e @critical)
-  regras-do-carrinho.spec.ts      → regras do carrinho, limites do estoque e ciclo de vida (comprar de novo)
+  regras-do-carrinho.spec.ts      → regras do carrinho, limites e autorização
+  ciclo-do-carrinho.spec.ts       → repetição de operações e novas compras
   integridade-do-carrinho.spec.ts → isolamento entre clientes e proteção dos dados ligados ao carrinho
-  usuarios.spec.ts                → os dois perfis (administrador e comum): cadastro, login e permissões
+  usuarios.spec.ts                → cadastro e login dos perfis administrador e comum
+  produtos.spec.ts                → validações, permissões e compra entre perfis
   smoke/
     login.spec.ts                 → autenticação e token
     users.spec.ts                 → listagem, cadastro, consulta, atualização e exclusão
@@ -227,13 +233,15 @@ tests/
     carts.spec.ts                 → listagem, cadastro, consulta, cancelamento e conclusão
 
 .github/workflows/testes-api.yml  → pipeline: saúde da API e testes (GitHub Actions)
+tests-infra/                      → testes isolados da infraestrutura da suíte
+scripts/verificar-inventario.mjs  → compara inventário HTML à descoberta do Playwright
 .vscode/                          → extensões e configurações do editor compartilhadas pelo time
 eslint.config.js                  → regras do lint
 .prettierrc.json                  → regras de formatação
 playwright.config.ts              → URL da API, paralelismo, novas tentativas, trace e relatório
 ```
 
-A ServeRest tem **dois perfis de usuário**. O **administrador** é o único que cadastra produtos. O **comum** (cliente) só compra. O fluxo de compra usa um administrador, porque o desafio pede que o mesmo usuário cadastre os produtos. A suíte `usuarios`:
+A ServeRest tem **dois perfis de usuário**. O **administrador** é o único que cadastra produtos. O **comum** (cliente) só compra. O fluxo de compra usa um administrador, porque o desafio pede que o mesmo usuário cadastre os produtos. As suítes de usuários e produtos:
 
 - roda os mesmos testes de cadastro e login para os dois perfis;
 - valida as permissões de cada um;
@@ -245,7 +253,7 @@ Decisões que vale explicar:
 - **A passagem de dados entre as chamadas fica à vista.** No `fluxo-de-compra.spec.ts`, o `_id` do usuário, o `token` do login e os `_id` dos produtos são guardados em variáveis e passados como parâmetro para as chamadas seguintes. O relatório do Playwright mostra cada passo numerado (`test.step`).
 - **Status HTTP e corpo são validados em conjunto.** Nos pontos críticos, o corpo é comparado por inteiro (`toEqual`). No carrinho, o objeto esperado é calculado a partir do que foi cadastrado: preço unitário, quantidade total e preço total.
 - **Cada teste cria a própria massa.** Por isso eles rodam em paralelo sem interferir uns nos outros.
-- **As respostas da API são tipadas.** Cada método das classes de API informa o formato do corpo de sucesso (`src/tipos.ts`). Com isso, o editor sugere os campos (`_id`, `authorization`...) e um nome de campo errado é acusado antes de rodar o teste.
+- **As respostas distinguem sucesso de erro.** `json()` retorna `unknown`, adequado a respostas não verificadas; `jsonSucesso()` exige status HTTP de sucesso e retorna o tipo declarado em `src/tipos.ts`. Isso não valida o schema em tempo de execução: os testes continuam responsáveis pelas asserções do corpo.
 - **O lint protege contra falso positivo.** O erro mais perigoso em testes assíncronos é esquecer um `await`: o teste termina antes de a verificação acontecer e passa sem validar nada. As regras `no-floating-promises` (TypeScript) e `missing-playwright-await` (Playwright) acusam esse erro no editor, no `npm run verificar` e na pipeline, antes de o código chegar à branch principal.
 - **O TypeScript está fixado na versão 6.0.** O `typescript-eslint` ainda não suporta o TypeScript 7. Quando suportar, basta atualizar os dois juntos.
 
@@ -286,11 +294,16 @@ as outras tags aparecem na coluna ao lado. Veja também o [inventário de testes
 | Não permite cancelar carrinho sem token; o carrinho e o estoque permanecem inalterados     |
 | Concluir compra sem carrinho responde 200, mas com mensagem diferente                      |
 | Cancelar compra sem carrinho responde 200, mas com mensagem diferente                      |
-| Repetir conclusão ou cancelamento não altera o estoque novamente                           |
 | Não aceita carrinho com quantidade 0                                                       |
 | Não aceita carrinho com quantidade -5                                                      |
-| Permite uma nova compra depois de concluir a anterior                                      |
-| Permite uma nova compra depois de cancelar a anterior e repõe o estoque                    |
+
+**Ciclo do carrinho** (`ciclo-do-carrinho.spec.ts`)
+
+| Cenário                                                                 |
+| ----------------------------------------------------------------------- |
+| Repetir conclusão ou cancelamento não altera o estoque novamente        |
+| Permite uma nova compra depois de concluir a anterior                   |
+| Permite uma nova compra depois de cancelar a anterior e repõe o estoque |
 
 **Integridade do carrinho** (`integridade-do-carrinho.spec.ts`)
 
@@ -305,16 +318,21 @@ as outras tags aparecem na coluna ao lado. Veja também o [inventário de testes
 
 **Usuários: administrador e comum** (`usuarios.spec.ts`)
 
+| Cenário                                                                  | Tags extras |
+| ------------------------------------------------------------------------ | ----------- |
+| Cadastra o usuário administrador e persiste os dados enviados            |             |
+| Administrador faz login e recebe um token do próprio usuário             |             |
+| Cadastra o usuário comum e persiste os dados enviados                    |             |
+| Usuário comum faz login e recebe um token do próprio usuário             |             |
+| Não cadastra usuário com e-mail já utilizado                             |             |
+| Não cadastra usuário com e-mail inválido ou campos obrigatórios ausentes |             |
+| Não faz login com senha errada                                           |             |
+| Após editar o e-mail, rejeita o antigo e permite login com o novo        |             |
+
+**Produtos e permissões** (`produtos.spec.ts`)
+
 | Cenário                                                                   | Tags extras |
 | ------------------------------------------------------------------------- | ----------- |
-| Cadastra o usuário administrador e persiste os dados enviados             |             |
-| Administrador faz login e recebe um token do próprio usuário              |             |
-| Cadastra o usuário comum e persiste os dados enviados                     |             |
-| Usuário comum faz login e recebe um token do próprio usuário              |             |
-| Não cadastra usuário com e-mail já utilizado                              |             |
-| Não cadastra usuário com e-mail inválido ou campos obrigatórios ausentes  |             |
-| Não faz login com senha errada                                            |             |
-| Após editar o e-mail, rejeita o antigo e permite login com o novo         |             |
 | Administrador cadastra produto, e o produto fica disponível para consulta |             |
 | Não cadastra produto com nome já utilizado                                |             |
 | Não atualiza produto para um nome já utilizado e preserva seus dados      |             |
@@ -331,7 +349,7 @@ A base da ServeRest **é apagada toda noite**. Daí vêm três consequências:
 
 1. Nenhum teste pode depender de dados existentes (IDs fixos, usuário "de teste" cadastrado antes). Tudo é criado na hora, a cada execução.
 2. Os dados são únicos (e-mail e nome de produto com sufixo aleatório), porque durante o dia outras pessoas usam o mesmo ambiente, e a API não aceita e-mail nem nome de produto repetidos.
-3. Ao final de cada teste, o que foi criado é apagado (carrinho → produtos → usuário, nessa ordem, porque a API bloqueia a exclusão de produto em carrinho e de usuário com carrinho). A limpeza é repetida até três vezes em erros transitórios; falhas persistentes são anexadas ao relatório e avisadas no log, sem substituir o resultado do teste.
+3. Ao final de cada teste, o que foi criado é apagado (carrinho → produtos → usuário, nessa ordem, porque a API bloqueia a exclusão de produto em carrinho e de usuário com carrinho). A limpeza é repetida até três vezes em erros transitórios; falhas persistentes são anotadas e anexadas ao relatório e avisadas no log, sem substituir o resultado do teste. Os testes de infraestrutura exercitam esses caminhos.
 
 ### Cenários mais críticos e por quê
 

@@ -13,7 +13,7 @@ on:
         description: 'Grupo de testes'
         type: choice
         required: true
-        options: [regression, smoke, desafio-tecnico, flaky-hunt]
+        options: [regression, smoke, desafio-tecnico, flaky-hunt, concorrencia]
         default: regression
 
 concurrency:
@@ -238,10 +238,54 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  concorrencia:
+    name: Monitorar concorrência (informativo)
+    if: >-
+      ${{
+        (github.event_name == 'schedule' && github.event.schedule == '0 13 * * 0') ||
+        (github.event_name == 'workflow_dispatch' && inputs.suite == 'concorrencia')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      resultado: ${{ steps.teste.outcome }}
+    env:
+      BASE_URL: http://127.0.0.1:3000
+      TESTAR_CONCORRENCIA: '1'
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar o Node.js (versão do .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instalar as dependências
+        run: npm ci
+
+      - name: Iniciar ServeRest isolada para o monitoramento
+        run: bash scripts/start-test-api.sh
+
+      - name: Repetir disputa simultânea pela última unidade
+        id: teste
+        continue-on-error: true
+        run: npx playwright test --grep "não deve vender a última unidade" --repeat-each=10 --workers=1 --retries=0
+
+      - name: Publicar relatório para consolidação
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-concorrencia
+          path: blob-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
   report:
     name: Consolidar resultados
     if: ${{ !cancelled() }}
-    needs: [api-health, lint, smoke, e2e, nightly-full, flaky-hunt]
+    needs: [api-health, lint, smoke, e2e, nightly-full, flaky-hunt, concorrencia]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -293,6 +337,7 @@ jobs:
           E2E_RESULT: ${{ needs.e2e.result }}
           NIGHTLY_RESULT: ${{ needs.nightly-full.result }}
           FLAKY_RESULT: ${{ needs.flaky-hunt.result }}
+          CONCURRENCY_RESULT: ${{ needs.concorrencia.outputs.resultado || needs.concorrencia.result }}
         run: |
           {
             echo "## Resultados da automação ServeRest"
@@ -305,6 +350,7 @@ jobs:
             echo "| Regressão em shards | $E2E_RESULT |"
             echo "| Regressão noturna | $NIGHTLY_RESULT |"
             echo "| Flaky hunt | $FLAKY_RESULT |"
+            echo "| Concorrência (informativo) | $CONCURRENCY_RESULT |"
             echo
             echo "Execução: [${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
           } >> "$GITHUB_STEP_SUMMARY"

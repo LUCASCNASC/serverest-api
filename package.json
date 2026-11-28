@@ -14,13 +14,15 @@
     "test:critical": "playwright test --grep @critical",
     "test:smoke": "playwright test --grep @smoke",
     "test:desafio": "playwright test --grep @desafio-tecnico",
+    "test:infra": "playwright test --config playwright.infra.config.ts",
+    "inventario:check": "node --test scripts/verificar-inventario.test.mjs && node scripts/verificar-inventario.mjs",
     "report": "playwright show-report",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verificar": "npm run typecheck && npm run lint && npm run format:check"
+    "verificar": "npm run typecheck && npm run lint && npm run format:check && npm run test:infra && npm run inventario:check"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -31,6 +33,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-playwright": "^2.12.1",
     "prettier": "^3.9.10",
+    "serverest": "3.2.2",
     "typescript": "~6.0.0",
     "typescript-eslint": "^8.72.0"
   }

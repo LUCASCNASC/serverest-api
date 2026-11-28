@@ -18,7 +18,7 @@ test.describe('Smoke: produtos', { tag: ['@smoke', '@regression'] }, () => {
     const produto = novoProduto();
     const cadastro = await api.produtos.cadastrar(produto, adminLogado.token);
     expect(cadastro.status()).toBe(201);
-    const produtoCriado = await cadastro.json();
+    const produtoCriado = await cadastro.jsonSucesso();
     expect(produtoCriado).toEqual({
       message: MENSAGENS.cadastroComSucesso,
       _id: expect.any(String),

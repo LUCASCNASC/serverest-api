@@ -252,7 +252,7 @@
         </p>
         <div class="metrics">
           <div class="metric"><strong>56</strong><span>casos descobertos (1 opt-in)</span></div>
-          <div class="metric"><strong>8</strong><span>arquivos de teste</span></div>
+          <div class="metric"><strong>10</strong><span>arquivos de teste de API</span></div>
           <div class="metric"><strong>5</strong><span>casos @smoke</span></div>
           <div class="metric"><strong>4</strong><span>casos @critical</span></div>
           <div class="metric"><strong>16</strong><span>operações no cliente HTTP</span></div>
@@ -337,13 +337,23 @@
               </tr>
               <tr>
                 <td><a href="tests/regras-do-carrinho.spec.ts">regras-do-carrinho.spec.ts</a></td>
-                <td>20</td>
-                <td>Validações, limites, autorização e ciclo de vida.</td>
+                <td>16</td>
+                <td>Validações, limites e autorização.</td>
+              </tr>
+              <tr>
+                <td><a href="tests/ciclo-do-carrinho.spec.ts">ciclo-do-carrinho.spec.ts</a></td>
+                <td>4</td>
+                <td>Repetição e ciclo de vida do carrinho.</td>
               </tr>
               <tr>
                 <td><a href="tests/usuarios.spec.ts">usuarios.spec.ts</a></td>
-                <td>23</td>
-                <td>Perfis, cadastro, login, permissões e produtos.</td>
+                <td>12</td>
+                <td>Perfis, cadastro e login.</td>
+              </tr>
+              <tr>
+                <td><a href="tests/produtos.spec.ts">produtos.spec.ts</a></td>
+                <td>11</td>
+                <td>Produtos, permissões e compras entre perfis.</td>
               </tr>
               <tr>
                 <td><a href="tests/smoke/carts.spec.ts">smoke/carts.spec.ts</a></td>
@@ -478,7 +488,10 @@
               </tr>
             </thead>
             <tbody>
-              <tr data-grupo="Fluxo">
+              <tr
+                data-grupo="Fluxo"
+                data-titulo="deve criar, consultar e concluir a compra, mantendo o estoque baixado"
+              >
                 <td>CT-01<br />Fluxo</td>
                 <td>Criar, consultar e concluir a compra.</td>
                 <td>Carrinho excluído; estoque permanece reduzido.</td>
@@ -490,7 +503,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Fluxo">
+              <tr
+                data-grupo="Fluxo"
+                data-titulo="deve criar, consultar e cancelar a compra, devolvendo o estoque"
+              >
                 <td>CT-02<br />Fluxo</td>
                 <td>Criar, consultar e cancelar a compra.</td>
                 <td>Carrinho excluído; estoque retorna ao valor original.</td>
@@ -502,7 +518,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Integridade">
+              <tr
+                data-grupo="Integridade"
+                data-titulo="concluir a compra de um cliente não afeta o carrinho de outro"
+              >
                 <td>CT-03<br />Integridade</td>
                 <td>Concluir a compra de um cliente com outro carrinho ativo.</td>
                 <td>Carrinho do outro cliente e reserva permanecem íntegros.</td>
@@ -513,7 +532,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Integridade">
+              <tr
+                data-grupo="Integridade"
+                data-titulo="o estoque reservado por um cliente só volta para venda quando ele cancela"
+              >
                 <td>CT-04<br />Integridade</td>
                 <td>Reservar todo o estoque, impedir outra compra e cancelar.</td>
                 <td>
@@ -526,7 +548,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Integridade">
+              <tr
+                data-grupo="Integridade"
+                data-titulo="não deve excluir produto que faz parte de um carrinho"
+              >
                 <td>CT-05<br />Integridade</td>
                 <td>Excluir produto que está em carrinho.</td>
                 <td>HTTP 400 com ID do carrinho; produto permanece consultável.</td>
@@ -537,7 +562,7 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Integridade">
+              <tr data-grupo="Integridade" data-titulo="não deve excluir usuário que tem carrinho">
                 <td>CT-06<br />Integridade</td>
                 <td>Excluir usuário que possui carrinho.</td>
                 <td>HTTP 400 com ID do carrinho; usuário permanece consultável.</td>
@@ -548,7 +573,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Integridade">
+              <tr
+                data-grupo="Integridade"
+                data-titulo="o carrinho mantém o preço do momento da compra quando o produto muda de preço"
+              >
                 <td>CT-07<br />Integridade</td>
                 <td>Alterar preço do produto depois de adicioná-lo ao carrinho.</td>
                 <td>Preço unitário e total no carrinho mantêm o valor original.</td>
@@ -559,7 +587,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr
+                data-grupo="Regras"
+                data-titulo="não deve permitir mais de um carrinho por usuário"
+              >
                 <td>CT-08<br />Regras</td>
                 <td>Criar segundo carrinho para o mesmo usuário.</td>
                 <td>HTTP 400; estoque do produto da segunda tentativa não muda.</td>
@@ -570,7 +601,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr
+                data-grupo="Regras"
+                data-titulo="não deve permitir comprar mais do que o estoque disponível"
+              >
                 <td>CT-09<br />Regras</td>
                 <td>Comprar uma unidade acima do estoque.</td>
                 <td>HTTP 400 por estoque insuficiente; estoque preservado.</td>
@@ -581,7 +615,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr
+                data-grupo="Regras"
+                data-titulo="não deve permitir o mesmo produto repetido no carrinho"
+              >
                 <td>CT-10<br />Regras</td>
                 <td>Enviar produto repetido no mesmo carrinho.</td>
                 <td>HTTP 400 com mensagem de produto duplicado.</td>
@@ -592,7 +629,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr
+                data-grupo="Regras"
+                data-titulo="não deve permitir carrinho com produto inexistente"
+              >
                 <td>CT-11<br />Regras</td>
                 <td>Criar carrinho com produto inexistente.</td>
                 <td>HTTP 400 com mensagem de produto não encontrado.</td>
@@ -603,7 +643,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr
+                data-grupo="Regras"
+                data-titulo="não deve baixar o estoque dos itens válidos quando outro produto não existe"
+              >
                 <td>CT-12<br />Regras</td>
                 <td>Enviar produto válido junto de produto inexistente.</td>
                 <td>HTTP 400; estoque do item válido não é reduzido.</td>
@@ -614,7 +657,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr
+                data-grupo="Regras"
+                data-titulo="não deve baixar parcialmente o estoque quando um item do carrinho está sem estoque"
+              >
                 <td>CT-13<br />Regras</td>
                 <td>Enviar itens com disponibilidade insuficiente em um deles.</td>
                 <td>HTTP 400; estoque dos dois produtos permanece igual.</td>
@@ -625,7 +671,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr
+                data-grupo="Regras"
+                data-titulo="não deve criar carrinho sem token de autenticação"
+              >
                 <td>CT-14<br />Regras</td>
                 <td>Criar carrinho sem token.</td>
                 <td>HTTP 401; estoque permanece igual.</td>
@@ -636,7 +685,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr
+                data-grupo="Regras"
+                data-titulo="não deve permitir cancelar um carrinho sem token e nem alterar seu estoque"
+              >
                 <td>CT-15<br />Regras</td>
                 <td>Cancelar carrinho sem token.</td>
                 <td>HTTP 401; carrinho e estoque reservado permanecem.</td>
@@ -647,7 +699,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr
+                data-grupo="Regras"
+                data-titulo="concluir compra sem carrinho responde 200, mas com mensagem diferente"
+              >
                 <td>CT-16<br />Regras</td>
                 <td>Concluir compra sem carrinho.</td>
                 <td>HTTP 200 com mensagem específica de usuário sem carrinho.</td>
@@ -658,7 +713,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr
+                data-grupo="Regras"
+                data-titulo="cancelar compra sem carrinho responde 200, mas com mensagem diferente"
+              >
                 <td>CT-17<br />Regras</td>
                 <td>Cancelar compra sem carrinho.</td>
                 <td>HTTP 200 com mensagem específica de usuário sem carrinho.</td>
@@ -669,7 +727,7 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr data-grupo="Regras" data-titulo="não deve aceitar carrinho com quantidade 0">
                 <td>CT-18<br />Regras</td>
                 <td>Criar carrinho com quantidade 0.</td>
                 <td>HTTP 400 por quantidade não positiva; estoque preservado.</td>
@@ -680,7 +738,7 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr data-grupo="Regras" data-titulo="não deve aceitar carrinho com quantidade -5">
                 <td>CT-19<br />Regras</td>
                 <td>Criar carrinho com quantidade -5.</td>
                 <td>HTTP 400 por quantidade não positiva; estoque preservado.</td>
@@ -691,29 +749,38 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr
+                data-grupo="Regras"
+                data-titulo="deve permitir uma nova compra depois de concluir a anterior"
+              >
                 <td>CT-20<br />Regras</td>
                 <td>Criar nova compra após concluir a anterior.</td>
                 <td>Novo carrinho é aceito e pertence ao cliente.</td>
                 <td>
                   <span class="tag">@regression</span><span class="tag">@critical</span><br /><a
-                    href="tests/regras-do-carrinho.spec.ts"
-                    >regras-do-carrinho.spec.ts</a
+                    href="tests/ciclo-do-carrinho.spec.ts"
+                    >ciclo-do-carrinho.spec.ts</a
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr
+                data-grupo="Regras"
+                data-titulo="deve permitir uma nova compra depois de cancelar a anterior e repor o estoque"
+              >
                 <td>CT-21<br />Regras</td>
                 <td>Criar nova compra após cancelar a anterior.</td>
                 <td>Estoque é reposto; novo carrinho tem ID distinto e reserva estoque.</td>
                 <td>
                   <span class="tag">@regression</span><span class="tag">@critical</span><br /><a
-                    href="tests/regras-do-carrinho.spec.ts"
-                    >regras-do-carrinho.spec.ts</a
+                    href="tests/ciclo-do-carrinho.spec.ts"
+                    >ciclo-do-carrinho.spec.ts</a
                   >
                 </td>
               </tr>
-              <tr data-grupo="Smoke">
+              <tr
+                data-grupo="Smoke"
+                data-titulo="lista, cria, consulta e cancela um carrinho, repondo o estoque"
+              >
                 <td>CT-22<br />Smoke</td>
                 <td>Listar, criar, consultar e cancelar carrinho.</td>
                 <td>Listagem e dados corretos; cancelamento remove carrinho e repõe estoque.</td>
@@ -724,7 +791,7 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Smoke">
+              <tr data-grupo="Smoke" data-titulo="conclui uma compra e mantém o estoque reservado">
                 <td>CT-23<br />Smoke</td>
                 <td>Concluir uma compra.</td>
                 <td>Carrinho removido; estoque continua reduzido.</td>
@@ -735,7 +802,7 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Smoke">
+              <tr data-grupo="Smoke" data-titulo="POST /login autentica um usuário cadastrado">
                 <td>CT-24<br />Smoke</td>
                 <td>Autenticar usuário cadastrado.</td>
                 <td>HTTP 200, token no formato esperado e e-mail correto no JWT.</td>
@@ -746,7 +813,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Smoke">
+              <tr
+                data-grupo="Smoke"
+                data-titulo="lista, cadastra, consulta, atualiza e exclui um produto"
+              >
                 <td>CT-25<br />Smoke</td>
                 <td>Listar, cadastrar, consultar, atualizar e excluir produto.</td>
                 <td>Dados persistidos e atualizados; produto excluído não é encontrado.</td>
@@ -757,7 +827,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Smoke">
+              <tr
+                data-grupo="Smoke"
+                data-titulo="lista, cadastra, consulta, atualiza e exclui um usuário"
+              >
                 <td>CT-26<br />Smoke</td>
                 <td>Listar, cadastrar, consultar, atualizar e excluir usuário.</td>
                 <td>Dados persistidos e atualizados; usuário excluído não é encontrado.</td>
@@ -768,7 +841,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr
+                data-grupo="Usuários"
+                data-titulo="deve cadastrar o usuário e persistir os dados enviados"
+              >
                 <td>CT-27<br />Usuários</td>
                 <td>Cadastrar usuário administrador.</td>
                 <td>HTTP 201; consulta confirma dados persistidos.</td>
@@ -778,7 +854,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr
+                data-grupo="Usuários"
+                data-titulo="deve fazer login e receber um token do próprio usuário"
+              >
                 <td>CT-28<br />Usuários</td>
                 <td>Fazer login como administrador.</td>
                 <td>HTTP 200; token Bearer contém o e-mail do usuário.</td>
@@ -788,7 +867,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr
+                data-grupo="Usuários"
+                data-titulo="deve cadastrar o usuário e persistir os dados enviados"
+              >
                 <td>CT-29<br />Usuários</td>
                 <td>Cadastrar usuário comum.</td>
                 <td>HTTP 201; consulta confirma dados persistidos.</td>
@@ -798,7 +880,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr
+                data-grupo="Usuários"
+                data-titulo="deve fazer login e receber um token do próprio usuário"
+              >
                 <td>CT-30<br />Usuários</td>
                 <td>Fazer login como usuário comum.</td>
                 <td>HTTP 200; token Bearer contém o e-mail do usuário.</td>
@@ -808,7 +893,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr
+                data-grupo="Usuários"
+                data-titulo="não deve cadastrar usuário com e-mail já utilizado"
+              >
                 <td>CT-31<br />Usuários</td>
                 <td>Cadastrar usuário com e-mail já usado.</td>
                 <td>HTTP 400 e mensagem de e-mail duplicado.</td>
@@ -818,7 +906,7 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr data-grupo="Usuários" data-titulo="não deve fazer login com senha errada">
                 <td>CT-32<br />Usuários</td>
                 <td>Fazer login com senha incorreta.</td>
                 <td>HTTP 401 e mensagem de credenciais inválidas.</td>
@@ -828,7 +916,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr
+                data-grupo="Usuários"
+                data-titulo="deve permitir login com o novo e-mail depois de editar os dados do usuário"
+              >
                 <td>CT-33<br />Usuários</td>
                 <td>Trocar o e-mail e testar o login antigo e o novo.</td>
                 <td>E-mail antigo é rejeitado; novo autentica e aparece no token.</td>
@@ -838,57 +929,72 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr
+                data-grupo="Usuários"
+                data-titulo="deve cadastrar produto e o produto ficar disponível para consulta"
+              >
                 <td>CT-34<br />Usuários</td>
                 <td>Administrador cadastra produto.</td>
                 <td>HTTP 201; consulta confirma os dados cadastrados.</td>
                 <td>
-                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
-                    >usuarios.spec.ts</a
+                  <span class="tag">@regression</span><br /><a href="tests/produtos.spec.ts"
+                    >produtos.spec.ts</a
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr
+                data-grupo="Usuários"
+                data-titulo="não deve cadastrar produto com nome já utilizado"
+              >
                 <td>CT-35<br />Usuários</td>
                 <td>Cadastrar produto com nome já utilizado.</td>
                 <td>HTTP 400 e mensagem de nome duplicado.</td>
                 <td>
-                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
-                    >usuarios.spec.ts</a
+                  <span class="tag">@regression</span><br /><a href="tests/produtos.spec.ts"
+                    >produtos.spec.ts</a
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr
+                data-grupo="Usuários"
+                data-titulo="não deve atualizar produto para um nome que já pertence a outro produto"
+              >
                 <td>CT-36<br />Usuários</td>
                 <td>Atualizar produto para nome já utilizado.</td>
                 <td>HTTP 400; consulta confirma que os dados originais não mudaram.</td>
                 <td>
-                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
-                    >usuarios.spec.ts</a
+                  <span class="tag">@regression</span><br /><a href="tests/produtos.spec.ts"
+                    >produtos.spec.ts</a
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr
+                data-grupo="Usuários"
+                data-titulo="não deve permitir que usuário comum cadastre produto"
+              >
                 <td>CT-37<br />Usuários</td>
                 <td>Usuário comum tenta cadastrar produto.</td>
                 <td>HTTP 403 com mensagem de rota de administrador.</td>
                 <td>
-                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
-                    >usuarios.spec.ts</a
+                  <span class="tag">@regression</span><br /><a href="tests/produtos.spec.ts"
+                    >produtos.spec.ts</a
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr
+                data-grupo="Usuários"
+                data-titulo="deve comprar produtos cadastrados por um administrador"
+              >
                 <td>CT-38<br />Usuários</td>
                 <td>Cliente compra produto cadastrado por administrador.</td>
                 <td>Carrinho pertence ao cliente; conclusão remove o carrinho.</td>
                 <td>
-                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
-                    >usuarios.spec.ts</a
+                  <span class="tag">@regression</span><br /><a href="tests/produtos.spec.ts"
+                    >produtos.spec.ts</a
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr data-grupo="Regras" data-titulo="não deve criar carrinho com token malformado">
                 <td>CT-39<br />Regras</td>
                 <td>Criar carrinho com token malformado.</td>
                 <td>HTTP 401; carrinho ausente e estoque preservado.</td>
@@ -899,7 +1005,7 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr data-grupo="Regras" data-titulo="não deve criar carrinho com token adulterado">
                 <td>CT-40<br />Regras</td>
                 <td>Criar carrinho com token adulterado.</td>
                 <td>HTTP 401; carrinho ausente e estoque preservado.</td>
@@ -910,7 +1016,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr
+                data-grupo="Regras"
+                data-titulo="não deve criar carrinho com token de usuário excluído"
+              >
                 <td>CT-41<br />Regras</td>
                 <td>Criar carrinho com token de usuário excluído.</td>
                 <td>HTTP 401; carrinho ausente e estoque preservado.</td>
@@ -921,7 +1030,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr
+                data-grupo="Regras"
+                data-titulo="não deve criar carrinho com lista vazia de produtos"
+              >
                 <td>CT-42<br />Regras</td>
                 <td>Criar carrinho com lista vazia.</td>
                 <td>HTTP 400; carrinho ausente e estoque preservado.</td>
@@ -932,7 +1044,10 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr
+                data-grupo="Regras"
+                data-titulo="repetir concluir compra não altera o estoque novamente"
+              >
                 <td>CT-43<br />Regras</td>
                 <td>Repetir conclusão de compra.</td>
                 <td>
@@ -940,12 +1055,15 @@
                 </td>
                 <td>
                   <span class="tag">@regression</span><br /><a
-                    href="tests/regras-do-carrinho.spec.ts"
-                    >regras-do-carrinho.spec.ts</a
+                    href="tests/ciclo-do-carrinho.spec.ts"
+                    >ciclo-do-carrinho.spec.ts</a
                   >
                 </td>
               </tr>
-              <tr data-grupo="Regras">
+              <tr
+                data-grupo="Regras"
+                data-titulo="repetir cancelar compra não altera o estoque novamente"
+              >
                 <td>CT-44<br />Regras</td>
                 <td>Repetir cancelamento de compra.</td>
                 <td>
@@ -953,12 +1071,15 @@
                 </td>
                 <td>
                   <span class="tag">@regression</span><br /><a
-                    href="tests/regras-do-carrinho.spec.ts"
-                    >regras-do-carrinho.spec.ts</a
+                    href="tests/ciclo-do-carrinho.spec.ts"
+                    >ciclo-do-carrinho.spec.ts</a
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr
+                data-grupo="Usuários"
+                data-titulo="não deve cadastrar usuário com e-mail inválido"
+              >
                 <td>CT-45<br />Usuários</td>
                 <td>Cadastrar usuário com e-mail inválido.</td>
                 <td>HTTP 400; usuário não é cadastrado.</td>
@@ -968,7 +1089,7 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr data-grupo="Usuários" data-titulo="não deve cadastrar usuário sem nome">
                 <td>CT-46<br />Usuários</td>
                 <td>Cadastrar usuário sem nome.</td>
                 <td>HTTP 400; usuário não é cadastrado.</td>
@@ -978,7 +1099,7 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr data-grupo="Usuários" data-titulo="não deve cadastrar usuário sem password">
                 <td>CT-47<br />Usuários</td>
                 <td>Cadastrar usuário sem senha.</td>
                 <td>HTTP 400; usuário não é cadastrado.</td>
@@ -988,7 +1109,7 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr data-grupo="Usuários" data-titulo="não deve cadastrar usuário sem administrador">
                 <td>CT-48<br />Usuários</td>
                 <td>Cadastrar usuário sem perfil de administrador.</td>
                 <td>HTTP 400; usuário não é cadastrado.</td>
@@ -998,67 +1119,82 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr data-grupo="Usuários" data-titulo="não deve cadastrar produto com preco negativo">
                 <td>CT-49<br />Usuários</td>
                 <td>Cadastrar produto com preço negativo.</td>
                 <td>HTTP 400; produto não é cadastrado.</td>
                 <td>
-                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
-                    >usuarios.spec.ts</a
+                  <span class="tag">@regression</span><br /><a href="tests/produtos.spec.ts"
+                    >produtos.spec.ts</a
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr
+                data-grupo="Usuários"
+                data-titulo="não deve cadastrar produto com quantidade negativo"
+              >
                 <td>CT-50<br />Usuários</td>
                 <td>Cadastrar produto com quantidade negativa.</td>
                 <td>HTTP 400; produto não é cadastrado.</td>
                 <td>
-                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
-                    >usuarios.spec.ts</a
+                  <span class="tag">@regression</span><br /><a href="tests/produtos.spec.ts"
+                    >produtos.spec.ts</a
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr data-grupo="Usuários" data-titulo="não deve atualizar produto com preco negativo">
                 <td>CT-51<br />Usuários</td>
                 <td>Atualizar produto com preço negativo.</td>
                 <td>HTTP 400; produto permanece inalterado.</td>
                 <td>
-                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
-                    >usuarios.spec.ts</a
+                  <span class="tag">@regression</span><br /><a href="tests/produtos.spec.ts"
+                    >produtos.spec.ts</a
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr
+                data-grupo="Usuários"
+                data-titulo="não deve atualizar produto com quantidade negativo"
+              >
                 <td>CT-52<br />Usuários</td>
                 <td>Atualizar produto com quantidade negativa.</td>
                 <td>HTTP 400; produto permanece inalterado.</td>
                 <td>
-                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
-                    >usuarios.spec.ts</a
+                  <span class="tag">@regression</span><br /><a href="tests/produtos.spec.ts"
+                    >produtos.spec.ts</a
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr
+                data-grupo="Usuários"
+                data-titulo="não deve permitir que usuário comum altere produto"
+              >
                 <td>CT-53<br />Usuários</td>
                 <td>Usuário comum tenta alterar produto.</td>
                 <td>HTTP 403; produto permanece inalterado.</td>
                 <td>
-                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
-                    >usuarios.spec.ts</a
+                  <span class="tag">@regression</span><br /><a href="tests/produtos.spec.ts"
+                    >produtos.spec.ts</a
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr
+                data-grupo="Usuários"
+                data-titulo="não deve permitir que usuário comum exclua produto"
+              >
                 <td>CT-54<br />Usuários</td>
                 <td>Usuário comum tenta excluir produto.</td>
                 <td>HTTP 403; produto permanece disponível.</td>
                 <td>
-                  <span class="tag">@regression</span><br /><a href="tests/usuarios.spec.ts"
-                    >usuarios.spec.ts</a
+                  <span class="tag">@regression</span><br /><a href="tests/produtos.spec.ts"
+                    >produtos.spec.ts</a
                   >
                 </td>
               </tr>
-              <tr data-grupo="Integridade">
+              <tr
+                data-grupo="Integridade"
+                data-titulo="não deve vender a última unidade para dois clientes simultaneamente"
+              >
                 <td>CT-55<br />Integridade</td>
                 <td>Dois clientes disputam simultaneamente a última unidade (opt-in).</td>
                 <td>
@@ -1072,7 +1208,7 @@
                   >
                 </td>
               </tr>
-              <tr data-grupo="Usuários">
+              <tr data-grupo="Usuários" data-titulo="não deve cadastrar usuário sem email">
                 <td>CT-56<br />Usuários</td>
                 <td>Cadastrar usuário sem e-mail.</td>
                 <td>HTTP 400; usuário não é cadastrado.</td>

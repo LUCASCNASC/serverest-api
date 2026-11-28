@@ -28,7 +28,7 @@ export default defineConfig(
   },
   {
     // Arquivos de configuração em JS não fazem parte do projeto TypeScript.
-    files: ['**/*.js'],
+    files: ['**/*.{js,mjs}'],
     extends: [tseslint.configs.disableTypeChecked],
   },
 

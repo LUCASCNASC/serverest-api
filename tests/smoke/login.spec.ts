@@ -10,7 +10,7 @@ test.describe('Smoke: login', { tag: ['@smoke', '@regression'] }, () => {
     );
 
     expect(resposta.status()).toBe(200);
-    const corpo = await resposta.json();
+    const corpo = await resposta.jsonSucesso();
     expect(corpo).toEqual({
       message: MENSAGENS.loginComSucesso,
       authorization: expect.stringMatching(/^Bearer \S+\.\S+\.\S+$/),

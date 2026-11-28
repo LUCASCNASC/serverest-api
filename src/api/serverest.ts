@@ -20,19 +20,27 @@ import type {
 // ele vem e para onde vai.
 
 /**
- * A mesma APIResponse do Playwright, mas com o `json()` já tipado com o corpo
- * de SUCESSO da rota. Assim o editor sugere os campos (`_id`, `authorization`...)
- * e o TypeScript acusa nome de campo errado antes de rodar.
- *
- * Nas respostas de erro a API devolve só `{ message }`; nesses casos o teste
- * compara o corpo inteiro com `toEqual`, que funciona com qualquer tipo.
+ * O corpo bruto pode representar sucesso ou erro. Para acessar o tipo esperado
+ * de sucesso, use `jsonSucesso()`, que rejeita respostas HTTP não bem-sucedidas.
+ * Os tipos descrevem o contrato esperado, sem validar o formato em runtime.
  */
 export type Resposta<CorpoDeSucesso> = Omit<APIResponse, 'json'> & {
-  json(): Promise<CorpoDeSucesso>;
+  json(): Promise<unknown>;
+  jsonSucesso(): Promise<CorpoDeSucesso>;
 };
 
-function tipada<CorpoDeSucesso>(resposta: Promise<APIResponse>) {
-  return resposta as Promise<Resposta<CorpoDeSucesso>>;
+async function tipada<CorpoDeSucesso>(
+  promessa: Promise<APIResponse>,
+): Promise<Resposta<CorpoDeSucesso>> {
+  const resposta = await promessa;
+  return Object.assign(resposta, {
+    async jsonSucesso(): Promise<CorpoDeSucesso> {
+      if (!resposta.ok()) {
+        throw new Error(`Esperada resposta de sucesso, recebida HTTP ${resposta.status()}`);
+      }
+      return (await resposta.json()) as CorpoDeSucesso;
+    },
+  });
 }
 
 function cabecalhoDeAutorizacao(token?: string): Record<string, string> {

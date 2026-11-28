@@ -31,7 +31,7 @@ test.describe('Fluxo de compra', { tag: ['@desafio-tecnico', '@regression', '@cr
       const resposta = await api.usuarios.cadastrar(usuario);
       expect(resposta.status()).toBe(201);
 
-      const corpo = await resposta.json();
+      const corpo = await resposta.jsonSucesso();
       expect(corpo).toEqual({
         message: MENSAGENS.cadastroComSucesso,
         _id: expect.any(String),
@@ -45,7 +45,7 @@ test.describe('Fluxo de compra', { tag: ['@desafio-tecnico', '@regression', '@cr
       const resposta = await api.login.entrar(usuario.email, usuario.password);
       expect(resposta.status()).toBe(200);
 
-      const corpo = await resposta.json();
+      const corpo = await resposta.jsonSucesso();
       expect(corpo.message).toBe(MENSAGENS.loginComSucesso);
       expect(corpo.authorization).toMatch(/^Bearer \S+$/);
 
@@ -59,7 +59,7 @@ test.describe('Fluxo de compra', { tag: ['@desafio-tecnico', '@regression', '@cr
         const resposta = await api.produtos.cadastrar(produto, token);
         expect(resposta.status()).toBe(201);
 
-        const corpo = await resposta.json();
+        const corpo = await resposta.jsonSucesso();
         expect(corpo).toEqual({
           message: MENSAGENS.cadastroComSucesso,
           _id: expect.any(String),
@@ -141,7 +141,7 @@ test.describe('Fluxo de compra', { tag: ['@desafio-tecnico', '@regression', '@cr
       const resposta = await api.carrinhos.cadastrar(itens, token);
       expect(resposta.status()).toBe(201);
 
-      const corpo = await resposta.json();
+      const corpo = await resposta.jsonSucesso();
       expect(corpo).toEqual({
         message: MENSAGENS.cadastroComSucesso,
         _id: expect.any(String),

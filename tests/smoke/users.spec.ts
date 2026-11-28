@@ -15,7 +15,7 @@ test.describe('Smoke: usuários', { tag: ['@smoke', '@regression'] }, () => {
     const usuario = novoUsuarioComum();
     const cadastro = await api.usuarios.cadastrar(usuario);
     expect(cadastro.status()).toBe(201);
-    const usuarioCriado = await cadastro.json();
+    const usuarioCriado = await cadastro.jsonSucesso();
     expect(usuarioCriado).toEqual({
       message: MENSAGENS.cadastroComSucesso,
       _id: expect.any(String),

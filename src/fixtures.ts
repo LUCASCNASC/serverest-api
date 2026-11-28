@@ -77,11 +77,12 @@ export class MassaDeTeste {
   }
 }
 
-async function reportarFalhasDeLimpeza(falhas: string[], testInfo: TestInfo) {
+export async function reportarFalhasDeLimpeza(falhas: string[], testInfo: TestInfo) {
   if (falhas.length === 0) return;
 
   const detalhes = falhas.join('\n');
   console.warn(`Falha ao limpar dados de teste:\n${detalhes}`);
+  testInfo.annotations.push({ type: 'falha de limpeza', description: detalhes });
   await testInfo.attach('falhas-limpeza-dados-de-teste', {
     body: detalhes,
     contentType: 'text/plain',
@@ -114,12 +115,12 @@ type Fixtures = {
 async function cadastrarELogar(api: ServeRest, massa: MassaDeTeste, usuario: Usuario) {
   const cadastro = await api.usuarios.cadastrar(usuario);
   expect(cadastro.status(), 'pré-condição: cadastrar usuário').toBe(201);
-  const { _id: idUsuario } = await cadastro.json();
+  const { _id: idUsuario } = await cadastro.jsonSucesso();
   massa.guardarUsuario(idUsuario);
 
   const login = await api.login.entrar(usuario.email, usuario.password);
   expect(login.status(), 'pré-condição: fazer login').toBe(200);
-  const { authorization: token } = await login.json();
+  const { authorization: token } = await login.jsonSucesso();
   massa.guardarToken(idUsuario, token);
 
   return { dados: usuario, idUsuario, token };
@@ -149,7 +150,7 @@ export const test = base.extend<Fixtures>({
     for (const produto of [novoProduto(), novoProduto()]) {
       const resposta = await api.produtos.cadastrar(produto, adminLogado.token);
       expect(resposta.status(), 'pré-condição: cadastrar produto').toBe(201);
-      const { _id } = await resposta.json();
+      const { _id } = await resposta.jsonSucesso();
       massa.guardarProduto(_id, adminLogado.token);
       produtos.push({ ...produto, _id });
     }

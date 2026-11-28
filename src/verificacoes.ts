@@ -11,7 +11,7 @@ export async function conferirEstoque(
   const resposta = await api.produtos.buscarPorId(produto._id);
   expect(resposta.status()).toBe(200);
 
-  const { quantidade } = await resposta.json();
+  const { quantidade } = await resposta.jsonSucesso();
   expect(quantidade, `estoque de "${produto.nome}"`).toBe(quantidadeEsperada);
 }
 
